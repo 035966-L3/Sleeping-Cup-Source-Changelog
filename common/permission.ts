@@ -1,3 +1,5 @@
+// Paste this to: hydrooj/node_modules/@hydrooj/common/permission.ts
+
 export const PERM = {
     PERM_NONE: 0n,
 

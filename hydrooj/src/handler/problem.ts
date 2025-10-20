@@ -616,7 +616,7 @@ export class ProblemEditHandler extends ProblemManageHandler {
         newPid: string | number = '', hidden = false, tag: string[] = [], difficulty = 0,
     ) {
         if (typeof newPid !== 'string') newPid = `P${newPid}`;
-        if (newPid !== this.pdoc.pid && await problem.get(domainId, newPid)) throw new ProblemAlreadyExistError(pid);
+        if (newPid !== this.pdoc.pid && await problem.get(domainId, newPid)) throw new ProblemAlreadyExistError(newPid);
         await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
         await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
         //Update: 题解
