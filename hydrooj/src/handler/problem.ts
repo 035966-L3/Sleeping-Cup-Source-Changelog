@@ -617,19 +617,18 @@ export class ProblemEditHandler extends ProblemManageHandler {
     ) {
         if (typeof newPid !== 'string') newPid = `P${newPid}`;
         if (newPid !== this.pdoc.pid && await problem.get(domainId, newPid)) throw new ProblemAlreadyExistError(newPid);
-        await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
-        await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
-        //Update: 题解
-        let bloglist=await (global.Hydro.model.blog.getMulti({}).toArray());
-        for(let i=0;i<bloglist.length;i++){
-            let blog=bloglist[i];
-            if(blog.solutionFor==this.pdoc.pid){
-                global.Hydro.model.blog.edit(blog.docId, blog.title, blog.content, blog.isPrivate, blog.collectionId, newPid, true);
-            }
-        }
         const $update: Partial<ProblemDoc> = {
             title, content, pid: newPid, hidden, tag: tag ?? [], difficulty, html: false,
         };
+        await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
+        await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
+        let bloglist=await (global.Hydro.model.blog.getMulti({}).toArray());
+        for (let i = 0; i < bloglist.length; i++) {
+            const blog = bloglist[i];
+            if (blog.solutionFor === this.pdoc.pid) {
+                await global.Hydro.model.blog.edit(blog.docId, blog.title, blog.content, blog.isPrivate, blog.collectionId, newPid, true);
+            }
+        }
         const pdoc = await problem.edit(domainId, this.pdoc.docId, $update);
         this.response.redirect = this.url('problem_detail', { pid: newPid || pdoc.docId });
     }
@@ -656,28 +655,15 @@ export class ProblemFilesHandler extends ProblemDetailHandler {
     notUsage = true;
 
     @param('d', Types.CommaSeperatedArray, true)
-    @param('pjax', Types.Boolean)
     @param('sidebar', Types.Boolean)
-    async get(domainId: string, d = ['testdata', 'additional_file'], pjax = false, sidebar = false) {
+    async get({ }, d = ['testdata', 'additional_file'], sidebar = false) {
         if (this.tdoc) throw new ContestNotEndedError();
-        this.response.body.testdata = d.includes('testdata') ? sortFiles(this.pdoc.data || []) : [];
+        this.response.body.testdata = sortFiles(this.pdoc.data || []);
+        this.response.body.additional_file = sortFiles(this.pdoc.additional_file || []);
         this.response.body.reference = this.pdoc.reference;
-        this.response.body.additional_file = d.includes('additional_file') ? sortFiles(this.pdoc.additional_file || []) : [];
-        if (pjax) {
-            const { testdata, additional_file } = this.response.body;
-            const owner = await user.getById(domainId, this.pdoc.owner);
-            const args = {
-                testdata, additional_file, pdoc: this.pdoc, owner_udoc: owner, sidebar, can_edit: true,
-            };
-            const tasks = [];
-            if (d.includes('testdata')) tasks.push(this.renderHTML('partials/problem_files.html', { ...args, filetype: 'testdata' }));
-            if (d.includes('additional_file')) tasks.push(this.renderHTML('partials/problem_files.html', { ...args, filetype: 'additional_file' }));
-            if (!sidebar) tasks.push(this.renderHTML('partials/problem-sidebar-information.html', args));
-            this.response.body = {
-                fragments: (await Promise.all(tasks)).map((i) => ({ html: i })),
-            };
-            this.response.template = '';
-        } else this.response.template = 'problem_files.html';
+        this.response.pjax = d.map((i) => ['partials/problem_files.html', { filetype: i, sidebar, can_edit: true }]);
+        if (!sidebar) this.response.pjax.push(['partials/problem-sidebar-information.html', {}]);
+        this.response.template = 'problem_files.html';
     }
 
     async post() {
@@ -935,14 +921,14 @@ export class ProblemSolutionHandler extends ProblemDetailHandler {
 
     @param('psid', Types.ObjectId)
     async postUpvote(domainId: string, psid: ObjectId) {
-        const [psdoc, pssdoc] = await solution.vote(domainId, psid, this.user._id, 1);
-        this.back({ vote: psdoc.vote, user_vote: pssdoc.vote });
+        const psdoc = await solution.vote(domainId, psid, this.user._id, 1);
+        this.back({ vote: psdoc.vote, user_vote: 1 });
     }
 
     @param('psid', Types.ObjectId)
     async postDownvote(domainId: string, psid: ObjectId) {
-        const [psdoc, pssdoc] = await solution.vote(domainId, psid, this.user._id, -1);
-        this.back({ vote: psdoc.vote, user_vote: pssdoc.vote });
+        const psdoc = await solution.vote(domainId, psid, this.user._id, -1);
+        this.back({ vote: psdoc.vote, user_vote: -1 });
     }
 }
 
@@ -984,7 +970,7 @@ export class ProblemStatisticsHandler extends ProblemDetailHandler {
             'record',
         );
         const [udict, udoc] = await Promise.all([
-            user.getListForRender(domainId, rsdocs.map((i) => i.uid), this.user.hasPerm(PERM.PERM_VIEW_DISPLAYNAME) ? ['displayName'] : []),
+            user.getListForRender(domainId, rsdocs.map((i) => i.uid), this.user.hasPerm(PERM.PERM_VIEW_USER_PRIVATE_INFO)),
             user.getById(domainId, this.pdoc.owner),
         ]);
         this.response.template = 'problem_statistics.html';
