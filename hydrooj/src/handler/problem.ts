@@ -622,7 +622,7 @@ export class ProblemEditHandler extends ProblemManageHandler {
         };
         await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
         await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
-        let bloglist=await (global.Hydro.model.blog.getMulti({}).toArray());
+        let bloglist = await (global.Hydro.model.blog.getMulti({}).toArray());
         for (let i = 0; i < bloglist.length; i++) {
             const blog = bloglist[i];
             if (blog.solutionFor === this.pdoc.pid) {
