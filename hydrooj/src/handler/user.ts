@@ -319,12 +319,12 @@ class UserRegisterWithCodeHandler extends Handler {
             signal: AbortSignal.timeout(15000),
         }); // responds 200 for malicious domains and 404 for safe ones
         if (response.ok) {
-            $set.avatar = "url:http://8.136.99.126/file/3/banned.png";
+            $set.avatar = "url:/file/3/banned.png";
             $set.uname = `Banned${uid}`;
             $set.unameLower = `banned${uid}`;
         }
         else {
-            $set.avatar = "url:http://8.136.99.126/file/3/default.jpg";
+            $set.avatar = "url:/file/3/default.jpg";
             $set.priv = 4;
         }
         $set.backgroundImage = `/components/profile/backgrounds/${uid % 21 + 1}.jpg`;
