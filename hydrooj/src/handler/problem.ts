@@ -620,13 +620,15 @@ export class ProblemEditHandler extends ProblemManageHandler {
         const $update: Partial<ProblemDoc> = {
             title, content, pid: newPid, hidden, tag: tag ?? [], difficulty, html: false,
         };
-        await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
-        await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
-        let bloglist = await (global.Hydro.model.blog.getMulti({}).toArray());
-        for (let i = 0; i < bloglist.length; i++) {
-            const blog = bloglist[i];
-            if (blog.solutionFor === this.pdoc.pid) {
-                await global.Hydro.model.blog.edit(blog.docId, blog.title, blog.content, blog.isPrivate, blog.collectionId, newPid, true);
+        if(newPid !== this.pdoc.pid){
+            await global.Hydro.model.blogsetting.setSolutionAllowed(newPid, (await global.Hydro.model.blogsetting.isSolutionAllowed(this.pdoc.pid)));
+            await global.Hydro.model.blogsetting.setSolutionAllowed(this.pdoc.pid, true);
+            let bloglist = await (global.Hydro.model.blog.getMulti({}).toArray());
+            for (let i = 0; i < bloglist.length; i++) {
+                const blog = bloglist[i];
+                if (blog.solutionFor === this.pdoc.pid) {
+                    await global.Hydro.model.blog.edit(blog.docId, blog.title, blog.content, blog.isPrivate, blog.collectionId, newPid, true);
+                }
             }
         }
         const pdoc = await problem.edit(domainId, this.pdoc.docId, $update);
