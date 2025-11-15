@@ -52,10 +52,7 @@ const RpTypes: Record<string, RpDef> = {
         base: 0,
     },
     delta: {
-        async run(domainIds, udict) {
-            // 直接跳过计算，Delta RP 设为 0
-            for (const key in udict) udict[key] = 0;
-        },
+        async run(domainIds, udict) {},
         hidden: true,
         base: 0,
     },
@@ -118,22 +115,17 @@ async function runInDomain(domainId: string, report: Report) {
         udict[user.uid] = user.rpInfo?.contest || RpTypes.contest.base; // 继承 Contest RP
     }
 
-    // 2. 强制 Problem & Delta RP = 0
+    // 2. 强制 Problem RP = 0
     await RpTypes.problem.run([domainId], results.problem = {}, report);
-    await RpTypes.delta.run([domainId], results.delta = {}, report);
 
-    // 3. 更新数据库（确保 Problem & Delta RP = 0，Contest RP 不变）
+    // 3. 更新数据库（确保 Problem RP = 0，Contest RP 不变）
     const bulk = db.collection('domain.user').initializeUnorderedBulkOp();
     for (const uid in udict) {
         if (!uid || uid === 'null' || +uid <= 0) continue;
         bulk.find({ domainId, uid: +uid }).upsert().update({
             $set: {
                 rp: udict[uid], // 只保留 Contest RP
-                rpInfo: {
-                    problem: 0,   // Problem RP 强制 0
-                    contest: udict[uid], // Contest RP 不变
-                    delta: 0,     // Delta RP 强制 0
-                },
+                "rpInfo.contest": udict[uid],
             },
         });
     }
