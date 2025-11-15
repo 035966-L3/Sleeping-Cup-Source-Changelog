@@ -628,9 +628,6 @@ export async function apply(ctx: Context) {
     ctx.Route('user_lostpass_with_code', '/lostpass/:code', UserLostPassWithCodeHandler);
     ctx.Route('user_delete', '/user/delete', UserDeleteHandler, PRIV.PRIV_USER_PROFILE);
     ctx.Route('user_detail', '/user/:uid', UserDetailHandler);
-    if (system.get('server.contestmode')) {
-        ctx.Route('contest_mode', '/contestmode', ContestModeHandler, PRIV.PRIV_EDIT_SYSTEM);
-    }
     ctx.oauth.provide('mail', {
         text: 'Mail',
         name: 'mail',
