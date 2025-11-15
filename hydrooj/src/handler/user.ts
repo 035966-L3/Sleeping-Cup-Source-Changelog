@@ -23,7 +23,7 @@ import * as oplog from '../model/oplog';
 import problem, { ProblemDoc } from '../model/problem';
 import ScheduleModel from '../model/schedule';
 import SolutionModel from '../model/solution';
-import * as system from '../model/system';
+import system from '../model/system';
 import token from '../model/token';
 import user, { deleteUserCache } from '../model/user';
 import {
@@ -628,6 +628,9 @@ export async function apply(ctx: Context) {
     ctx.Route('user_lostpass_with_code', '/lostpass/:code', UserLostPassWithCodeHandler);
     ctx.Route('user_delete', '/user/delete', UserDeleteHandler, PRIV.PRIV_USER_PROFILE);
     ctx.Route('user_detail', '/user/:uid', UserDetailHandler);
+    if (system.get('server.contestmode')) {
+        ctx.Route('contest_mode', '/contestmode', ContestModeHandler, PRIV.PRIV_EDIT_SYSTEM);
+    }
     ctx.oauth.provide('mail', {
         text: 'Mail',
         name: 'mail',
