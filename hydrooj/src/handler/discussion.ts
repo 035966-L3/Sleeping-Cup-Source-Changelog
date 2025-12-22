@@ -433,3 +433,4 @@ export async function apply(ctx) {
     ctx.Route('discussion_node', '/discuss/:type/:name', DiscussionNodeHandler);
     ctx.Route('discussion_create', '/discuss/:type/:name/create', DiscussionCreateHandler, PRIV.PRIV_USER_PROFILE, PERM.PERM_CREATE_DISCUSSION);
 }
+
