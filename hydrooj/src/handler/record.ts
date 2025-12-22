@@ -24,7 +24,7 @@ import { buildProjection, Time } from '../utils';
 import { ContestDetailBaseHandler } from './contest';
 import { postJudge } from './judge';
 
-class RecordListHandler extends ContestDetailBaseHandler {
+export class RecordListHandler extends ContestDetailBaseHandler {
     @param('page', Types.PositiveInt, true)
     @param('pid', Types.ProblemId, true)
     @param('tid', Types.ObjectId, true)
@@ -126,13 +126,14 @@ class RecordListHandler extends ContestDetailBaseHandler {
     }
 }
 
-class RecordDetailHandler extends ContestDetailBaseHandler {
+export class RecordDetailHandler extends ContestDetailBaseHandler {
     rdoc: RecordDoc;
 
     @param('rid', Types.ObjectId)
     async prepare(domainId: string, rid: ObjectId) {
         this.rdoc = await record.get(domainId, rid);
         if (!this.rdoc) throw new RecordNotFoundError(rid);
+        if (this.rdoc.uid !== this.user._id) throw new RecordNotFoundError(this.rdoc._id, `Did you mean: /submission/${this.rdoc.numberId}`);
     }
 
     async download() {
@@ -245,7 +246,7 @@ class RecordDetailHandler extends ContestDetailBaseHandler {
     }
 }
 
-class RecordMainConnectionHandler extends ConnectionHandler {
+export class RecordMainConnectionHandler extends ConnectionHandler {
     all = false;
     allDomain = false;
     tid: string;
@@ -325,6 +326,7 @@ class RecordMainConnectionHandler extends ConnectionHandler {
             if (rdoc.domainId !== this.args.domainId) return;
             if (!this.pretest && typeof rdoc.input === 'string') return;
             if (!this.all) {
+                if (!rdoc.contest && this.tid) return;
                 if (rdoc.contest && ![this.tid, '000000000000000000000000'].includes(rdoc.contest.toString())) return;
                 if (this.tid && rdoc.contest?.toString() !== '0'.repeat(24)) {
                     if (contest.isLocked(this.tdoc) && !this.pretest) return;
@@ -369,7 +371,7 @@ class RecordMainConnectionHandler extends ConnectionHandler {
     }
 }
 
-class RecordDetailConnectionHandler extends ConnectionHandler {
+export class RecordDetailConnectionHandler extends ConnectionHandler {
     pdoc: ProblemDoc;
     tdoc?: Tdoc;
     rid: string = '';
@@ -398,7 +400,7 @@ class RecordDetailConnectionHandler extends ConnectionHandler {
             problem.get(rdoc.domainId, rdoc.pid),
             problem.getStatus(domainId, rdoc.pid, this.user._id),
         ]);
-
+        if (this.uid !== this.user._id) throw new RecordNotFoundError(rdoc._id, `Did you mean: /submission/${rdoc.numberId}`);
         this.canViewCode = 1;
 
         if (!rdoc.contest || this.user._id !== rdoc.uid) {

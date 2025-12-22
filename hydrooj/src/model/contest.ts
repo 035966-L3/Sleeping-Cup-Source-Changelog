@@ -98,7 +98,7 @@ export function buildContestRule<T>(def: Partial<ContestRule<T>>, baseRule: Cont
 }
 
 const acm = buildContestRule({
-    TEXT: 'ACM/ICPC',
+    TEXT: 'XCPC',
     check: () => { },
     statusSort: { accept: -1, time: 1 },
     submitAfterAccept: false,
@@ -276,6 +276,7 @@ const acm = buildContestRule({
         delete rdoc.memory;
         rdoc.testCases = [];
         rdoc.judgeTexts = [];
+        delete rdoc.progress;
         delete rdoc.subtasks;
         delete rdoc.score;
         return rdoc;
