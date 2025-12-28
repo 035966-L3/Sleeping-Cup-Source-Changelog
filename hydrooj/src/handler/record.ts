@@ -133,7 +133,7 @@ export class RecordDetailHandler extends ContestDetailBaseHandler {
     async prepare(domainId: string, rid: ObjectId) {
         this.rdoc = await record.get(domainId, rid);
         if (!this.rdoc) throw new RecordNotFoundError(rid);
-        if (this.rdoc.uid !== this.user._id && !this.checkPerm(PERM.PERM_VIEW_RECORD)) throw new RecordNotFoundError(this.rdoc._id, `Did you mean: /submission/${this.rdoc.numberId}`);
+        if (this.rdoc.uid !== this.user._id && !this.user.hasPerm(PERM.PERM_VIEW_RECORD)) throw new RecordNotFoundError(this.rdoc._id, `Did you mean: /submission/${this.rdoc.numberId}`);
     }
 
     async download() {
@@ -400,7 +400,7 @@ export class RecordDetailConnectionHandler extends ConnectionHandler {
             problem.get(rdoc.domainId, rdoc.pid),
             problem.getStatus(domainId, rdoc.pid, this.user._id),
         ]);
-        if (this.uid !== this.user._id && !this.checkPerm(PERM.PERM_VIEW_RECORD)) throw new RecordNotFoundError(rdoc._id, `Did you mean: /submission/${rdoc.numberId}`);
+        if (this.uid !== this.user._id && !this.user.hasPerm(PERM.PERM_VIEW_RECORD)) throw new RecordNotFoundError(rdoc._id, `Did you mean: /submission/${rdoc.numberId}`);
         this.canViewCode = 1;
 
         if (!rdoc.contest || this.user._id !== rdoc.uid) {
