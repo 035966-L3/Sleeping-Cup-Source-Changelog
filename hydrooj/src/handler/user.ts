@@ -314,11 +314,12 @@ class UserRegisterWithCodeHandler extends Handler {
         await token.del(code, token.TYPE_REGISTRATION);
         const [id, mailDomain] = this.tdoc.mail.split('@');
         const $set: any = this.tdoc.set || {};
-        const response = await fetch(`https://www.usercheck.com/domain/${mailDomain}`, {
+        const response = await fetch(`https://disposablemail.io/domain/${mailDomain}`, {
             method: 'HEAD',
             signal: AbortSignal.timeout(15000),
-        }); // responds 200 for malicious domains and 404 for safe ones
-        if (response.ok) {
+        });
+	const resultText = await response.text();
+        if (resultText.includes("is a temporary email address")) {
             $set.avatar = "url:/file/3/banned.png";
             $set.uname = `Banned${uid}`;
             $set.unameLower = `banned${uid}`;
