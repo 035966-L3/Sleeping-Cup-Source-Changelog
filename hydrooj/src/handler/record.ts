@@ -37,7 +37,7 @@ export class RecordListHandler extends ContestDetailBaseHandler {
     async get(
         domainId: string, page = 1, pid?: string | number, tid?: ObjectId,
         uidOrName?: string, lang?: string, status?: number, full = false,
-        all = false, allDomain = false,
+        all = true, allDomain = false,
     ) {
         const notification = [];
         let tdoc = null;
@@ -77,11 +77,7 @@ export class RecordListHandler extends ContestDetailBaseHandler {
         }
         if (lang) q.lang = lang;
         if (typeof status === 'number') q.status = status;
-        if (all) {
-            this.checkPerm(PERM.PERM_VIEW_CONTEST_HIDDEN_SCOREBOARD);
-            this.checkPerm(PERM.PERM_VIEW_HOMEWORK_HIDDEN_SCOREBOARD);
-            delete q.contest;
-        }
+        if (all) delete q.contest;
         if (allDomain) {
             this.checkPriv(PRIV.PRIV_MANAGE_ALL_DOMAIN);
             delete q.contest;
