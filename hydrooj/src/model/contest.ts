@@ -635,7 +635,7 @@ const ledo = buildContestRule({
 
 
 const sleepingcupcoder = buildContestRule({
-    TEXT: 'SCupCoder',
+    TEXT: 'Sleeping Cup',
     check: () => { },
     submitAfterAccept: false,
     showScoreboard: (tdoc, now) => now > tdoc.beginAt,
