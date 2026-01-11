@@ -14,7 +14,7 @@ import problem from '../model/problem';
 import UserModel from '../model/user';
 import db from '../service/db';
 
-export const description= 'Calculate rp of a domain, or all domains';
+export const description = 'Calculate rp of a domain, or all domains';
 
 type ND = NumericDictionary<number>;
 type Report = (data: any) => void;
