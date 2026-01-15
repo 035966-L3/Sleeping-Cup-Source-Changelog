@@ -315,7 +315,7 @@ class UserRegisterWithCodeHandler extends Handler {
         const [id, mailDomain] = this.tdoc.mail.split('@');
         const $set: any = this.tdoc.set || {};
         const response = await fetch(`https://disposablemail.io/domain/${mailDomain}`, {
-            method: 'HEAD',
+            method: 'GET',
             signal: AbortSignal.timeout(15000),
         });
 	const resultText = await response.text();
