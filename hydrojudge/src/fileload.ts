@@ -18,7 +18,7 @@ process_file() {
 process_file file file.processed
 size=$(wc -c < file.processed)
 if [ "$size" -gt 1536 ]; then
-  echo -e "$(head -c 1024 file.processed)...\\n[$((size - 1024)) characters remaining]"
+  echo -e "$(head -c 1024 file.processed)...\\n[$((size - 1024)) more characters truncated]"
 else
   cat file.processed
 fi

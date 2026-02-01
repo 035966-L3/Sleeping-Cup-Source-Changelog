@@ -84,7 +84,7 @@ function judgeCase(c: NormalizedCase) {
             ansData,
             status,
             score,
-            time,
+            time: time / 3,
             memory,
             message,
         };
