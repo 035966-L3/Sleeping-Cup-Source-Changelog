@@ -184,7 +184,9 @@ const checkers: Record<string, Checker> = new Proxy({
             message: config.detail === 'full' ? files.message : '',
             status: score >= config.score
                 ? STATUS.STATUS_ACCEPTED
-                : STATUS.STATUS_WRONG_ANSWER,
+                : score > 0
+                    ? STATUS.STATUS_PARTIAL
+                    : STATUS.STATUS_WRONG_ANSWER,
         };
     },
 
@@ -230,7 +232,11 @@ const checkers: Record<string, Checker> = new Proxy({
         });
         if (status !== STATUS.STATUS_ACCEPTED) throw new SystemError('Checker returned {0}.', [status]);
         const score = +stdout;
-        status = score >= 100 ? STATUS.STATUS_ACCEPTED : STATUS.STATUS_WRONG_ANSWER;
+        status = score >= 100
+                 ? STATUS.STATUS_ACCEPTED
+                 : score > 0
+                     ? STATUS.STATUS_PARTIAL
+                     : STATUS.STATUS_WRONG_ANSWER;
         return { status, score: Math.floor((score * config.score) / 100), message: config.detail === 'full' ? stderr : '' };
     },
 
@@ -285,15 +291,17 @@ const checkers: Record<string, Checker> = new Proxy({
             ],
         });
 
-        const status = code === 42
-            ? STATUS.STATUS_ACCEPTED
-            : code === 43
-                ? STATUS.STATUS_WRONG_ANSWER
-                : STATUS.STATUS_SYSTEM_ERROR;
-
         const score = status === STATUS.STATUS_ACCEPTED
             ? config.score
             : +files['feedback_dir/score.txt'] || 0;
+
+        const status = code === 42
+            ? STATUS.STATUS_ACCEPTED
+            : code === 43
+                ? score > 0
+                    ? STATUS.STATUS_PARTIAL
+                    : STATUS.STATUS_WRONG_ANSWER
+                : STATUS.STATUS_SYSTEM_ERROR;
 
         const message = status === STATUS.STATUS_SYSTEM_ERROR
             ? files['feedback_dir/judgeerror.txt'] || `Checker exited with code ${code}`
