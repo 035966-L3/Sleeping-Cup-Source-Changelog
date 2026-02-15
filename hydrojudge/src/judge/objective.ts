@@ -4,7 +4,7 @@ import { fs, yaml } from '@hydrooj/utils';
 import { FormatError } from '../error';
 import { Context } from './interface';
 
-function mergeStatus(firstStatus: STATUS, secondStatus: STATUS) { return (firstStatus === secondStatus || firstStatus === STATUS.STATUS_JUDGING) ? secondStatus: STATUS.STATUS_PARTIAL; }
+function mergeStatus(firstStatus: STATUS, secondStatus: STATUS) { return (firstStatus === secondStatus || firstStatus === STATUS.STATUS_JUDGING) ? secondStatus : STATUS.STATUS_PARTIAL; }
 
 export async function judge({
     next, end, config, code,
