@@ -1,0 +1,91 @@
+{% import "components/form.html" as form with context %}
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-9 columns">
+    <div class="section">
+      <div class="section__body">
+        <form method="post">
+          <div class="row">
+            <div class="medium-12 columns">
+              <label>
+                {{ _('Title') }}
+                <input name="title" placeholder="{{ _('title') }}" value="{{ ddoc.title|default('') }}" class="textbox"
+                  autofocus>
+              </label>
+            </div>
+          </div>
+          {{ form.form_textarea({
+          columns:12,
+          label:'Content',
+          name:'content',
+          value:ddoc.content|default(''),
+          hotkeys:'ctrl+enter:submit',
+          markdown:true,
+          required:true,
+          extra_style:'height: 500px',
+          extra_textarea_class:'auto-resize'
+          }) }}
+          {% if solutionFor or (ddoc and ddoc.solutionFor) %}
+          <div class="row">
+            <div class="medium-12 columns">
+              <label>
+                {{ _('Solution for problem') }}: <b>{{ solutionFor or (ddoc and ddoc.solutionFor) }}</b>
+              </label>
+            </div>
+          </div>
+          {% else %}
+          <!-- 新增隐私设置区域 -->
+          <div class="row">
+            <div class="medium-12 columns">
+              <label>
+                {{ _('Privacy Setting') }}
+                <select name="isPrivate" class="select">
+                  <option value="false" {% if not ddoc or ddoc.isPrivate===false %}selected{% endif %}>{{ _('Public
+                    (needs review)') }}</option>
+                  <option value="true" {% if ddoc and ddoc.isPrivate %}selected{% endif %}>{{ _('Private') }}</option>
+                </select>
+              </label>
+              <label>
+                {{ _('Collection Setting') }}
+                <select name="collectionId" class="select">
+                  <option value="">{{ _('No Collection') }}</option>
+                  {% for collection in collections %}
+                  <option value="{{ collection.docId }}" {% if ddoc and ddoc.collectionId and
+                    ddoc.collectionId.toString()==collection.docId.toString() %}selected{% endif %}>{{ collection.title
+                    }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              {% if ddoc and ddoc.isPublic === false and not ddoc.isPrivate %}
+              <p class="help-text">{{ _('This post is pending review for public visibility') }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          <div class="row">
+            <div class="columns">
+              <button name="operation" value="{{ solutionFor and 'create' or (ddoc and 'update' or 'create') }}"
+                data-default-submit type="submit" class="rounded primary button">
+                {{ solutionFor and _('Submit_Solution') or (ddoc and _('Update') or _('Create')) }} (Ctrl+Enter)
+              </button>
+              {% if ddoc and (handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) or handler.user.own(ddoc)) %}
+              <button name="operation" value="delete" type="submit" class="rounded button">
+                {{ _('Delete') }}
+              </button>
+              {% endif %}
+              <button type="button" class="rounded button" onclick="window.history.go(-1)">
+                {{ _('Cancel') }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="medium-3 columns">
+    {% include 'components/md_hint.html' %}
+  </div>
+</div>
+
+{% endblock %}

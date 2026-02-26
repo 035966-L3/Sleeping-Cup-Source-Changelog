@@ -1,0 +1,70 @@
+{% import "components/nothing.html" as nothing with context %}
+{% import "components/user.html" as user with context %}
+{% import "components/paginator.html" as paginator with context %}
+{% extends "domain_base.html" %}
+{% block domain_content %}
+<div class="row">
+  <div class="medium-12 columns">
+    <div class="section">
+      <div class="section__header">
+        <h1 class="section__title">{{ _('Blog Review Queue') }}</h1>
+
+      </div>
+
+      {% if not ddocs.length %}
+      {{ nothing.render('No posts pending review') }}
+      {% else %}
+      <ol class="section__list discussion__list">
+        {%- for ddoc in ddocs -%}
+        {# 检查作者信息是否存在 #}
+        {% set author = udocs.get(ddoc.owner) %}
+        {% if author %}
+        <h2 class="discussion__title" style="text-align: center;">
+          <a href="{{ url('blog_detail', uid=ddoc.owner, did=ddoc._id, anchor=ddoc.updateAt.getTime()) }}"
+            data-emoji-enabled>
+            {{ ddoc['title'] }}
+
+          </a>
+          <br />
+          <br />
+          {{ user.render_inline(author) }}
+          <br />
+          <br />
+          <form method="post" action="{{ url('blog_approve', uid=ddoc.owner, did=ddoc._id) }}" class="inline-block">
+            <input type="text" name="note" placeholder="{{ _('Review Note (optional)') }}" class="textbox"
+              style="width: 100%;text-align: center;">
+            <label class="checkbox">
+              <input type="checkbox" name="showReviewer" checked class="checkbox" />
+              {{ _('Show reviewer to author') }}
+            </label>
+            <br />
+            <button type="submit" class="rounded primary button" data-confirm="{{ _('Approve this post to public?') }}">
+              {{ _('Approve') }}
+            </button>
+          </form>
+          <form method="post" action="{{ url('blog_reject', uid=ddoc.owner, did=ddoc._id) }}" class="inline-block"
+            style="margin-left: 8px;">
+            <input type="text" name="note" placeholder="{{ _('Review Note (optional)') }}" class="textbox"
+              style="width: 100%;text-align: center;">
+            <label class="checkbox">
+              <input type="checkbox" name="showReviewer" checked class="checkbox" />
+              {{ _('Show reviewer to author') }}
+            </label>
+            <br />
+            <button type="submit" class="rounded button" data-confirm="{{ _('Reject this post?') }}">
+              {{ _('Reject') }}
+            </button>
+          </form>
+        </h2>
+
+
+        {% endif %}
+        {%- endfor -%}
+      </ol>
+      {% if page and dpcount %}{{ paginator.render(page, dpcount) }}{% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

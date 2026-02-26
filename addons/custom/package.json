@@ -1,0 +1,10 @@
+{
+    "name": "custom",
+    "version": "1.0.0",
+    "description": "Custom theme for Sleeping Cup",
+    "author": "Sleeping Cup",
+    "license": "MIT",
+    "dependencies": {
+        "typescript": "^5.9.2"
+    }
+}

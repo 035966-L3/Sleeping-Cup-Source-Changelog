@@ -1,0 +1,30 @@
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-12 columns">
+    <div class="section visible">
+      <div class="section__header">
+        <h1 class="section__title">Sleeping Cup Submission <a href="/submission/{{ rdoc.numberId }}" class="submission-link">#{{ rdoc.numberId }}</a> ({{ rdoc._id|string }})</h1>
+        <h1 class="section__title">Judging Details: Subtask #{{ rdoc.testCases[idx].subtaskId }}, Test #{{ rdoc.testCases[idx].id }}</h1>
+        <h2 class="section__title">Verdict: <span class="record-status--text {{ model.builtin.STATUS_CODES[rdoc.testCases[idx].status] }}">{{ model.builtin.STATUS_TEXTS[rdoc.testCases[idx].status] }} ({{ rdoc.testCases[idx].score }})</span></h2>
+        <h2 class="section__title">Time: {{ rdoc.testCases[idx].time|round|int }} ms</h2>
+        <h2 class="section__title">Memory: {{ rdoc.testCases[idx].memory|round|int }} KiB</h2>
+      </div>
+      <div class="section__body">
+        <h3 class="section__title">Input</h3>
+        <pre class="judge-text">{% if rdoc.testCases[idx].inData === null %}[REDACTED]{% else %}{{ rdoc.testCases[idx].inData|default('[REDACTED]')|ansi|safe }}{% endif %}</pre>
+        <h3 class="section__title">Answer</h3>
+        <pre class="judge-text">{% if rdoc.testCases[idx].ansData === null %}[REDACTED]{% else %}{{ rdoc.testCases[idx].ansData|default('[REDACTED]')|ansi|safe }}{% endif %}</pre>
+        <h3 class="section__title">Output</h3>
+        <pre class="judge-text">{% if rdoc.testCases[idx].outData === null %}[REDACTED]{% else %}{{ rdoc.testCases[idx].outData|default('[REDACTED]')|ansi|safe }}{% endif %}</pre>
+        <h3 class="section__title">Log</h3>
+        <pre class="judge-text">{% if rdoc.testCases[idx].errData === null %}[REDACTED]{% else %}{{ rdoc.testCases[idx].errData|default('[REDACTED]')|ansi|safe }}{% endif %}</pre>
+        <h3 class="section__title">Message</h3>
+        <pre class="judge-text">{{ formatJudgeTexts([rdoc.testCases[idx].message])|ansi|safe if rdoc.testCases[idx].message else '' }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+

@@ -1,0 +1,342 @@
+import {
+    ObjectId, HackRejudgeFailedError, PretestRejudgeFailedError,
+    PermissionError, ProblemConfigError, RecordNotFoundError, NotFoundError,
+    db, ProblemDoc, TaskModel, param, Types, RecordDoc,
+    Tdoc, PERM, PRIV, STATUS, postJudge, UserModel,
+    Udoc, VUdoc, GDoc, DomainModel, BaseUserDict,
+    Context, Handler
+} from 'hydrooj';
+
+import * as contest from 'hydrooj/src/model/contest';
+
+import { ContestDetailBaseHandler } from 'hydrooj/src/handler/contest';
+
+import { omit, pick } from 'lodash';
+
+export const coll: Collection<Udoc> = db.collection('user');
+export const collV: Collection<VUdoc> = db.collection('vuser');
+export const collGroup: Collection<GDoc> = db.collection('user.group');
+UserModel.getListForRender = async function (domainId: string, uids: number[]) {
+    const [udocs, vudocs, dudocs] = await Promise.all([
+        UserModel.getMulti({ _id: { $in: uids } }, ['acm', 'acms', 'realname_flag', 'realname_name', '_id', 'uname', 'mail', 'avatar', 'school', 'studentId', 'certification_flag', 'certification_adder', 'rating_changes']).toArray(),
+        collV.find({ _id: { $in: uids } }).toArray(),
+        DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, displayName: true, level: true, rp: true }).toArray()
+        // DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, displayName: true, level: true }).toArray()
+    ]);
+    const udict = {};
+    for (const udoc of udocs) udict[udoc._id] = udoc;
+    for (const udoc of vudocs) udict[udoc._id] = { ...udict[udoc._id], ...udoc };
+    for (const dudoc of dudocs){
+        udict[dudoc.uid].displayName = dudoc.displayName;
+        udict[dudoc.uid].level = dudoc.level;
+        udict[dudoc.uid].rp = dudoc.rp;
+    }
+    for (const uid of uids) {
+        if (!udict[uid]) {
+            udict[uid] = { ...UserModel.defaultUser };
+        }
+    }
+    for (const key in udict) {
+        udict[key].school ||= '';
+        udict[key].studentId ||= '';
+        udict[key].displayName ||= udict[key].uname;
+        udict[key].avatar ||= `gravatar:${udict[key].mail}`;
+    }
+    return udict as BaseUserDict;
+};
+export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // added
+    rdoc: RecordDoc;
+
+    @param('numberid', Types.PositiveInt)
+    async prepare(domainId: string, numberid: number) {
+        this.rdoc = await Temp.gets(numberid);
+        if (!this.rdoc) throw new RecordNotFoundError(numberid.toString());
+    }
+
+    async download() {
+        for (const file of ['code', 'hack']) {
+            if (!this.rdoc.files?.[file]) continue;
+            const [id, filename] = this.rdoc.files?.[file]?.split('#') || [];
+            // eslint-disable-next-line no-await-in-loop
+            this.response.redirect = await global.Hydro.model.storage.signDownloadLink(`submission/${id}`, filename || file, true, 'user');
+            return;
+        }
+        const lang = global.Hydro.model.setting.langs[this.rdoc.lang]?.pretest || this.rdoc.lang;
+        this.response.body = this.rdoc.code;
+        this.response.type = 'text/plain';
+        this.response.disposition = `attachment; filename="${global.Hydro.model.setting.langs[lang]?.code_file || `foo.${this.rdoc.lang}`}"`;
+    }
+
+    @param('numberid', Types.PositiveInt)
+    @param('download', Types.Boolean)
+    @param('rev', Types.ObjectId, true)
+    // eslint-disable-next-line consistent-return
+    async get(domainId: string, numberid: number, download = false, rev?: ObjectId) {
+        let rdoc = this.rdoc;
+        let rid = this.rdoc._id;
+        const allRev = await db.collection('record.history').find({ rid }).project({ _id: 1, judgeAt: 1 }).sort({ _id: -1 }).toArray();
+        const allRevs: Record<string, Date> = Object.fromEntries(allRev.map((i) => [i._id.toString(), i.judgeAt]));
+        if (rev && allRevs[rev.toString()]) {
+            rdoc = { ...rdoc, ...omit(await db.collection('record.history').findOne({ _id: rev }), ['_id']), progress: null };
+        }
+        let canViewDetail = true;
+        if (rdoc.contest?.toString().startsWith('0'.repeat(23))) {
+            if (rdoc.uid !== this.user._id) throw new PermissionError(PERM.PERM_READ_RECORD_CODE);
+        } else if (rdoc.contest) {
+            this.tdoc = await global.Hydro.model.contest.get(domainId, rdoc.contest);
+            let canView = this.user.own(this.tdoc);
+            canView ||= global.Hydro.model.contest.canShowRecord.call(this, this.tdoc);
+            canView ||= global.Hydro.model.contest.canShowSelfRecord.call(this, this.tdoc, true) && rdoc.uid === this.user._id;
+            if (!canView && rdoc.uid !== this.user._id) throw new PermissionError(rid);
+            canViewDetail = canView;
+            this.args.tid = this.tdoc.docId;
+            if (!this.user.own(this.tdoc) && !this.user.hasPerm(PERM.PERM_EDIT_CONTEST)) {
+                this.rdoc = global.Hydro.model.contest.applyProjection(this.tdoc, this.rdoc, this.user);
+            }
+        }
+
+        // eslint-disable-next-line prefer-const
+        let [pdoc, self, udoc] = await Promise.all([
+            global.Hydro.model.problem.get(rdoc.domainId, rdoc.pid, global.Hydro.model.problem.PROJECTION_LIST.concat('config')),
+            global.Hydro.model.problem.getStatus(domainId, rdoc.pid, this.user._id),
+            global.Hydro.model.user.getById(domainId, rdoc.uid),
+        ]);
+
+        let canViewCode = 1;
+        if (this.tdoc) {
+            const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
+            canViewCode ||= this.user.own(this.tdoc);
+            if (this.tdoc.allowViewCode && global.Hydro.model.contest.isDone(this.tdoc)) {
+                canViewCode ||= tsdoc?.attend;
+            }
+            if (!tsdoc?.attend && pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
+        } else if (pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
+        if (!canViewCode) {
+            rdoc.code = '';
+            rdoc.files = {};
+            rdoc.compilerTexts = [];
+        } else if (download) return await this.download();
+        this.response.template = 'record_detail.html';
+        this.response.body = {
+            udoc, rdoc: canViewDetail ? rdoc : pick(rdoc, ['_id', 'lang', 'code']), pdoc, tdoc: this.tdoc, rev, allRevs,
+        };
+    }
+
+    @param('numberid', Types.PositiveInt)
+    async post() {
+        this.checkPerm(PERM.PERM_REJUDGE);
+        if (this.rdoc.files?.hack) throw new HackRejudgeFailedError();
+        if (this.rdoc.contest?.toString().startsWith('0'.repeat(23))) throw new PretestRejudgeFailedError();
+    }
+
+    @param('numberid', Types.PositiveInt)
+    async postRejudge(domainId: string, numberid: number) {
+        const pdoc = await global.Hydro.model.problem.get(domainId, this.rdoc.pid);
+        let rid = this.rdoc._id;
+        if (!pdoc?.config || typeof pdoc.config === 'string') throw new ProblemConfigError();
+        const priority = await global.Hydro.model.record.submissionPriority(this.user._id, -20);
+        const rdoc = await global.Hydro.model.record.reset(domainId, rid, true);
+        this.ctx.broadcast('record/change', rdoc);
+        await global.Hydro.model.record.judge(domainId, rid, priority, this.rdoc.contest ? { detail: false } : {});
+        this.back();
+    }
+
+    @param('numberid', Types.PositiveInt)
+    async postCancel(domainId: string, numberid: number) {
+        let rid = this.rdoc._id;
+        const $set = {
+            status: STATUS.STATUS_CANCELED,
+            score: 0,
+            time: 0,
+            memory: 0,
+            testCases: [{
+                id: 0, subtaskId: 0, status: 9, score: 0, time: 0, memory: 0, message: 'score canceled',
+            }],
+            subtasks: {},
+        };
+        const [latest] = await Promise.all([
+            global.Hydro.model.record.update(domainId, rid, $set),
+            TaskModel.deleteMany({ rid: this.rdoc._id }),
+        ]);
+        if (latest) {
+            this.ctx.broadcast('record/change', latest);
+            await postJudge(latest);
+        }
+        this.back();
+    }
+}
+class Temp {
+    static async gets(arg0: number) { // added
+        const res = await global.Hydro.model.record.coll.findOne({ numberId: arg0 });
+        if (!res) return null;
+        return res;
+    }
+    static async add(
+        domainId: string, pid: number, uid: number,
+        lang: string, code: string, addTask: boolean,
+        args: {
+            contest?: ObjectId;
+            input?: string;
+            files?: Record<string, string>;
+            hackTarget?: ObjectId;
+            type: 'judge' | 'rejudge' | 'pretest' | 'hack' | 'generate';
+        } = { type: 'judge' },
+    ) {
+        let numberId = 0; // added
+
+        if (args.type === 'judge' && domainId === 'system' && args.contest?.toString() !== '000000000000000000000000') { // added
+            let result = await db.collection('system').findOneAndUpdate(
+  { _id: 'submissionCount' }, 
+  { $inc: { value: 1 } },
+  { 
+    upsert: true, 
+    returnDocument: 'after',
+    upsertDefaults: { value: 0 } 
+  }
+);
+            numberId = result.value;
+        }
+
+        const data: RecordDoc = {
+            status: STATUS.STATUS_WAITING,
+            _id: new ObjectId(),
+            uid,
+            code,
+            lang,
+            pid,
+            domainId,
+            score: 0,
+            time: 0,
+            memory: 0,
+            judgeTexts: [],
+            compilerTexts: [],
+            testCases: [],
+            judger: null,
+            judgeAt: null,
+            rejudged: false,
+            numberId, // added
+        };
+        let isContest = !!args.contest;
+        if (args.contest) data.contest = args.contest;
+        if (args.files) data.files = args.files;
+        if (args.hackTarget) data.hackTarget = args.hackTarget;
+        if (args.type === 'rejudge') {
+            args.type = 'judge';
+            data.rejudged = true;
+        } else if (args.type === 'pretest') {
+            data.input = args.input || '';
+            isContest = false;
+            data.contest = global.Hydro.model.record.RECORD_PRETEST;
+        } else if (args.type === 'generate') {
+            data.contest = global.Hydro.model.record.RECORD_GENERATE;
+        }
+        const res = await global.Hydro.model.record.coll.insertOne(data);
+        global.bus.broadcast('record/change', data);
+        if (addTask) {
+            const priority = await global.Hydro.model.record.submissionPriority(uid, args.type === 'pretest' ? -20 : (isContest ? 50 : 0));
+            await global.Hydro.model.record.judge(domainId, data, priority, isContest ? { detail: false } : {}, {
+                type: args.type,
+                rejudge: data.rejudged,
+            });
+        }
+        return res.insertedId;
+    }
+}
+
+export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { // added
+    rdoc: RecordDoc;
+
+    @param('numberid', Types.PositiveInt)
+    @param('subtaskid', Types.Int)
+    @param('caseid', Types.Int)
+    async prepare(domainId: string, numberid: number, subtaskid: number, caseid: number) {
+        this.rdoc = await Temp.gets(numberid);
+        if (!this.rdoc) throw new RecordNotFoundError(numberid.toString());
+        let idx = this.rdoc.testCases.findIndex(testCase => testCase.id === caseid && testCase.subtaskId === subtaskid);
+        if (idx === -1) throw new NotFoundError(`Submission ${numberid} Subtask ${subtaskid} Test ${caseid}`);
+        let testCase = this.rdoc.testCases[idx];
+        // if (testCase.inData === undefined) throw new NotFoundError(`Submission ${numberid} Subtask ${subtaskid} Test ${caseid} Detail`);
+    }
+
+    @param('numberid', Types.PositiveInt)
+    @param('subtaskid', Types.Int)
+    @param('caseid', Types.Int)
+    @param('rev', Types.ObjectId, true)
+    // eslint-disable-next-line consistent-return
+    async get(domainId: string, numberid: number, subtaskid: number, caseid: number, rev?: ObjectId) {
+        let rdoc = this.rdoc;
+        let rid = this.rdoc._id;
+        const allRev = await db.collection('record.history').find({ rid }).project({ _id: 1, judgeAt: 1 }).sort({ _id: -1 }).toArray();
+        const allRevs: Record<string, Date> = Object.fromEntries(allRev.map((i) => [i._id.toString(), i.judgeAt]));
+        if (rev && allRevs[rev.toString()]) {
+            rdoc = { ...rdoc, ...omit(await db.collection('record.history').findOne({ _id: rev }), ['_id']), progress: null };
+        }
+        let canViewDetail = true;
+        if (rdoc.contest?.toString().startsWith('0'.repeat(23))) {
+            if (rdoc.uid !== this.user._id) throw new PermissionError(PERM.PERM_READ_RECORD_CODE);
+        } else if (rdoc.contest) {
+            this.tdoc = await global.Hydro.model.contest.get(domainId, rdoc.contest);
+            let canView = this.user.own(this.tdoc);
+            canView ||= global.Hydro.model.contest.canShowRecord.call(this, this.tdoc);
+            canView ||= global.Hydro.model.contest.canShowSelfRecord.call(this, this.tdoc, true) && rdoc.uid === this.user._id;
+            if (!canView && rdoc.uid !== this.user._id) throw new PermissionError(rid);
+            canViewDetail = canView;
+            this.args.tid = this.tdoc.docId;
+            if (!this.user.own(this.tdoc) && !this.user.hasPerm(PERM.PERM_EDIT_CONTEST)) {
+                this.rdoc = global.Hydro.model.contest.applyProjection(this.tdoc, this.rdoc, this.user);
+            }
+        }
+        if (!canViewDetail) throw new PermissionError(rid);
+
+        // eslint-disable-next-line prefer-const
+        let [pdoc, self, udoc] = await Promise.all([
+            global.Hydro.model.problem.get(rdoc.domainId, rdoc.pid, global.Hydro.model.problem.PROJECTION_LIST.concat('config')),
+            global.Hydro.model.problem.getStatus(domainId, rdoc.pid, this.user._id),
+            global.Hydro.model.user.getById(domainId, rdoc.uid),
+        ]);
+
+        let canViewCode = 1;
+        if (this.tdoc) {
+            const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
+            canViewCode ||= this.user.own(this.tdoc);
+            if (this.tdoc.allowViewCode && global.Hydro.model.contest.isDone(this.tdoc)) {
+                canViewCode ||= tsdoc?.attend;
+            }
+            if (!tsdoc?.attend && pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
+        } else if (pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
+        if (!canViewCode) throw new PermissionError(rid);
+        this.response.template = 'more_number_record_detail.html';
+        this.response.body = { rdoc, idx: this.rdoc.testCases.findIndex(testCase => testCase.id === caseid && testCase.subtaskId === subtaskid) };
+    }
+}
+
+
+
+export async function apply(ctx: Context) {
+    ctx.Route('number_record_detail', '/submission/:numberid', NumberRecordDetailHandler);
+    ctx.Route('more_number_record_detail', '/submission/detail/:numberid/:subtaskid/:caseid', MoreNumberRecordDetailHandler);
+    global.Hydro.model.record.PROJECTION_LIST.push('numberId');
+    global.Hydro.model.record.gets = Temp.gets;
+    global.Hydro.model.record.add = Temp.add;
+    ctx.on('handler/after/SystemUserPriv#get', async (that) => {
+        const udocs = that.response.body.udocs;
+        const udict = [];
+        for (const udoc of udocs) {
+            udict.push(await UserModel.getById('system', udoc._id));
+        }
+        that.response.body.udocs = udict;
+    });
+    ctx.on('handler/after/DomainUser#get', async (that) => {
+        const rudocs = that.response.body.rudocs;
+        const roles = Object.keys(rudocs);
+        for (let role of roles) {
+            let newulist=[];
+            let ufr = rudocs[role].sort((a, b) => a._id - b._id);
+            for(let user of ufr) {
+                newulist.push(await UserModel.getById('system', user._id));
+            }
+            rudocs[role] = newulist;
+        }
+        that.response.body.udocs = rudocs;
+    });
+}

@@ -1,0 +1,106 @@
+{% import "components/nothing.html" as nothing with context %}
+{% import "components/user.html" as user with context %}
+{% import "components/paginator.html" as paginator with context %}
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-9 columns">
+    <div class="section">
+      <!-- 题解页面顶部区域 -->
+      {% if solutionFor %}
+      <div class="section__header">
+        <h1 class="section__title">{{ _('Solution List') }} - <a href="/p/{{ solutionFor }}" style="color:#5f9fd6">{{
+            solutionFor }}</a></h1>
+        {% if solutionAllowed %}
+        <a href="{{ url('solution_create', pid=solutionFor) }}" class="primary button">{{ _('Submit_Solution') }}</a>
+        {% else %}
+        <span class="tag error">{{ _('Solution submission is disabled for this problem') }}</span>
+        {% endif %}
+        {% if handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) %}
+        <form method="post" action="{{ url('solution_setting', pid=solutionFor) }}" style="display:inline;">
+          <input type="hidden" name="allowed" value="{{ not solutionAllowed }}">
+          <button type="submit" class="button">
+            {% if solutionAllowed %}
+            {{ _('Disable Solution Submission') }}
+            {% else %}
+            {{ _('Enable Solution Submission') }}
+            {% endif %}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if not ddocs.length %}
+      {{ nothing.render((solutionFor and _('No solutions yet...') or 'no blog yet...')) }}
+      {% else %}
+      <ol class="section__list discussion__list">
+        {%- for ddoc in ddocs -%}
+        {% set canView = (handler.user._id == udocs.get(ddoc.owner)._id) or (ddoc.isPublic) or
+        handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) %}
+        {% if canView %}
+        <li class="section__list__item discussion__item">
+          <div class="media">
+            <div class="media__left">
+              <div class="discussion__replies numbox">
+                <div class="numbox__num large">{{ datetimeSpan(ddoc._id, false, 'D')|safe }}</div>
+                <div class="numbox__text">{{ datetimeSpan(ddoc._id, false, 'YYYY-M')|safe }}</div>
+              </div>
+            </div>
+            <div class="media__body top">
+              <h1 class="discussion__title">
+                <a href="{% if solutionFor %}{{ url('solution_detail', pid=solutionFor, did=ddoc._id) }}{% else %}{{ url('blog_detail', uid=udocs.get(ddoc.owner)._id, did=ddoc._id, anchor=ddoc.updateAt.getTime()) }}{% endif %}"
+                  data-emoji-enabled>
+                  {{ ddoc['title'] }}
+                </a>
+              </h1>
+              <ul class="supplementary list">
+                <li>{{ _('{0} views').format(ddoc.views) }}</li>
+                <li>{{ datetimeSpan(ddoc.updateAt)|safe }}</li>
+                {% if ddoc.reviewStatus === 'pending' %}
+                <span class="tag pending">{{ _('Pending Review') }}</span>
+                {% elif ddoc.reviewStatus === 'rejected' %}
+                <span class="tag error">{{ _('Rejected') }}</span>
+                {% elif ddoc.isPrivate %}
+                <span class="tag private">{{ _('Private') }}</span>
+                {% endif %}
+                {% if ddoc.reviewNote %}
+                <span class="help-text">{{ _('Review Note: {0}').format(ddoc.reviewNote) }}</span>
+                {% endif %}
+                {% if ddoc.showReviewer and ddoc.reviewerUid %}
+                <span class="help-text">
+                  {{ _('Reviewed by:') }}
+                  {% set reviewer = udocs.get(ddoc.reviewerUid) %}
+                  {% if reviewer %}
+                  {{ user.render_inline(reviewer) }}
+                  {% else %}
+                  #{{ ddoc.reviewerUid }}
+                  {% endif %}
+                </span>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        </li>
+        {% endif %}
+        {%- endfor -%}
+      </ol>
+      {% if page and dpcount %}{{ paginator.render(page, dpcount) }}{% endif %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="medium-3 columns">
+    <div class="section side">
+      {% if udoc.blogpic %}<div class="discussion-node__bg {{ udoc.blogpic }}"></div>{% endif %}
+      <div class="section__header">
+        <h1 class="section__title">{{ solutionFor and _('Solution') or _("{0}'s blog").format(udoc.uname) }}</h1>
+      </div>
+      <div class="section__body">
+        {% if not solutionFor and handler.user._id == udoc._id %}
+        <p><a href="{{ url('blog_create', uid=udoc._id) }}" class="expanded primary button">{{ _('Create a Post') }}</a>
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

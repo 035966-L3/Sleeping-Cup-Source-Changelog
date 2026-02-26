@@ -1,0 +1,97 @@
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-9 columns">
+    <div class="section">
+      <div class="section__body">
+        <ul class="supplementary list">
+          <li>
+            {% if ddoc.solutionFor %}
+            <a class="discussion-node-tag" href="{{ url('solution_list', pid=ddoc.solutionFor) }}">
+              <span class="v-center icon icon-flag"></span>
+              {{ _("{0}'s solution").format(ddoc.solutionFor) }}
+            </a>
+            {% else %}
+            <a class="discussion-node-tag" href="{{ url('blog_main', uid=udoc._id) }}">
+              <span class="v-center icon icon-flag"></span>
+              {{ _("{0}'s blog").format(udoc.uname) }}
+            </a>
+            {% endif %}
+          </li>
+          <li>
+            <h2>{{ ddoc.title }}</h2>
+          </li>
+          <!-- 显示状态标签 -->
+
+          <li>
+            {% if ddoc.reviewStatus === 'pending' %}
+            <span class="tag pending">{{ _('Pending Review') }}</span>
+            {% elif ddoc.reviewStatus === 'rejected' %}
+            <span class="tag error">{{ _('Rejected') }}</span>
+            {% elif ddoc.isPrivate %}
+            <span class="tag private">{{ _('Private') }}</span>
+            {% endif %}
+            {% if ddoc.reviewNote %}
+            <span class="help-text">{{ _('Review Note: {0}').format(ddoc.reviewNote) }}</span>
+            {% endif %}
+            {{ user.render_inline(udoc) }}
+            @
+            {{ datetimeSpan(ddoc._id)|safe }}
+          </li>
+        </ul>
+        <div class="typo richmedia topic__content" data-emoji-enabled>
+          {{ ddoc['content']|markdown|safe }}
+        </div>
+      </div>
+      <ul class="section__footer supplementary dot list">
+        {% if handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) or handler.user.own(ddoc) %}
+        <li><a href="{{ url('blog_edit', uid=udoc._id, did=ddoc.docId) }}">
+            <span class="icon icon-edit"></span> {{ _('Edit') }}
+          </a></li>
+        {% endif %}
+        <!-- 管理员审核按钮 -->
+        {% if handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) and ddoc.reviewStatus === 'pending' %}
+        <li>
+          <form method="post" action="{{ url('blog_approve', uid=udoc._id, did=ddoc.docId) }}" style="display: inline;">
+            <button type="submit" class="link-like" data-confirm="{{ _('Approve this post to public?') }}">
+              <span class="icon icon-check"></span> {{ _('Approve') }}
+            </button>
+          </form>
+        </li>
+
+        <li>
+          <form method="post" action="{{ url('blog_reject', uid=udoc._id, did=ddoc.docId) }}" style="display: inline;">
+
+            <button type="submit" class="link-like" data-confirm="{{ _('Reject this post?') }}">
+              <span class="icon icon-times"></span> {{ _('Reject') }}
+            </button>
+          </form>
+        </li>
+        {% endif %}
+        <li>{{ _('{0} views').format(ddoc.views) }}</li>
+        <li><a href="{{ url('wiki_help', anchor='contact') }}">
+            <span class="icon icon-warning"></span> {{ _('Report') }}
+          </a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="medium-3 columns">
+    <div class="section side">
+      <div class="profile__bg user-profile-bg--1"></div>
+      <div class="section__body">
+        <div class="media sidebar-user-profile">
+          <div class="media__left">
+            <img src="{{ avatarUrl(udoc.avatar, 80) }}" width="80" height="80" class="medium user-profile-avatar">
+          </div>
+          <div class="media__body">
+            <p>
+              {{ user.render_inline(udoc, avatar=false, modbadge=false) }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
