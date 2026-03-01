@@ -21,8 +21,8 @@ function judgeCase(c: NormalizedCase) {
             {
                 execute: ctx.executeUser.execute,
                 copyIn: ctx.executeUser.copyIn,
-                time: c.time,
-                memory: c.memory,
+                time: c.time * 4,
+                memory: c.memory + 16,
                 addressSpaceLimit: address_space_limit,
                 processLimit: process_limit,
             },
@@ -74,8 +74,8 @@ function judgeCase(c: NormalizedCase) {
             ansData,
             status,
             score,
-            time: time / 3,
-            memory,
+            time: time / 4,
+            memory : memory - 16384,
             message,
         };
     };

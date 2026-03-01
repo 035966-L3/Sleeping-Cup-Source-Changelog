@@ -15,8 +15,8 @@ function judgeCase(c: NormalizedCase) {
                 stdin: { src: c.input },
                 copyIn: ctx.execute.copyIn,
                 filename: ctx.config.filename,
-                time: c.time,
-                memory: c.memory,
+                time: c.time * 4,
+                memory: c.memory + 16,
                 cacheStdoutAndStderr: true,
                 addressSpaceLimit: address_space_limit,
                 processLimit: process_limit,
@@ -67,7 +67,7 @@ function judgeCase(c: NormalizedCase) {
             if (code < 32 && signalled) message = signals[code];
             else message = { message: 'Your program returned {0}.', params: [code] };
         }
-        if (runner && ctx.rerun && c.time <= 5000 && status === STATUS.STATUS_TIME_LIMIT_EXCEEDED) {
+        if (runner && ctx.rerun && status === STATUS.STATUS_TIME_LIMIT_EXCEEDED) {
             ctx.rerun--;
             return await runner(ctx, ctxSubtask);
         }
@@ -84,8 +84,8 @@ function judgeCase(c: NormalizedCase) {
             ansData,
             status,
             score,
-            time: time / 3,
-            memory,
+            time: time / 4,
+            memory: memory - 16384,
             message,
         };
     };
