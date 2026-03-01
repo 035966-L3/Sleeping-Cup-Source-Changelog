@@ -442,7 +442,7 @@ class HomeSettingsHandler extends Handler {
             if (val !== undefined) $set[key] = val;
         }
         for (const key in booleanKeys) if (!args[key]) $set[key] = false;
-        if (!this.user.hasPriv(PRIV.PRIV_REALNAMED) && args.category === 'account') $set['bio'] = '';
+        if (args.category === 'domain') $set['displayName'] = '';
         if (Object.keys($set).length) await setter($set);
         if (args.viewLang && args.viewLang !== this.session.viewLang) this.session.viewLang = '';
         this.back();
