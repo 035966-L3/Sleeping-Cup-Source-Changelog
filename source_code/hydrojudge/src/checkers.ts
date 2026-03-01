@@ -100,6 +100,8 @@ fi
 
 const getDefaultChecker = (strict: boolean) => async (config: CheckConfig) => {
     const { code, stdout } = await runQueued(`/bin/bash compare.sh${strict ? '' : ' BZ'}`, {
+        time: 60000,
+        memory: 512,
         copyIn: {
             usrout: config.user_stdout,
             answer: config.output,
@@ -137,6 +139,8 @@ const checkers: Record<string, Checker> = new Proxy({
      */
     async hustoj(config) {
         const { code, stdout } = await runQueued(`${config.execute} input answer usrout`, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 usrout: config.user_stdout,
                 answer: config.output,
@@ -162,6 +166,8 @@ const checkers: Record<string, Checker> = new Proxy({
      */
     async lemon(config) {
         const { files, code } = await runQueued(`${config.execute} input usrout answer ${config.score} score message`, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 usrout: config.user_stdout,
                 answer: config.output,
@@ -197,6 +203,8 @@ const checkers: Record<string, Checker> = new Proxy({
      */
     async qduoj(config) {
         const { status, stdout } = await runQueued(`${config.execute} input usrout`, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 usrout: config.user_stdout,
                 input: config.input,
@@ -222,6 +230,8 @@ const checkers: Record<string, Checker> = new Proxy({
      */
     async syzoj(config) {
         let { status, stdout, stderr } = await runQueued(config.execute, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 input: config.input,
                 user_out: config.user_stdout,
@@ -242,6 +252,8 @@ const checkers: Record<string, Checker> = new Proxy({
 
     async testlib(config) {
         const { stderr, status, code } = await runQueued(`${config.execute} /w/in /w/user_out /w/answer`, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 in: config.input,
                 user_out: config.user_stdout,
@@ -276,6 +288,8 @@ const checkers: Record<string, Checker> = new Proxy({
     // https://www.kattis.com/problem-package-format/spec/2023-07-draft.html#output-validator
     async kattis(config) {
         const { files, code } = await runQueued(`${config.execute} input answer_file feedback_dir`, {
+            time: 60000,
+            memory: 512,
             copyIn: {
                 input: config.input,
                 answer_file: config.output,

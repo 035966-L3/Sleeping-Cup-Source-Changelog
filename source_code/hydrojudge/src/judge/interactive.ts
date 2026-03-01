@@ -21,7 +21,7 @@ function judgeCase(c: NormalizedCase) {
             {
                 execute: ctx.executeUser.execute,
                 copyIn: ctx.executeUser.copyIn,
-                time: c.time * 4,
+                time: c.time,
                 memory: c.memory + 16,
                 addressSpaceLimit: address_space_limit,
                 processLimit: process_limit,
@@ -48,7 +48,7 @@ function judgeCase(c: NormalizedCase) {
         let message: any = '';
         if (time > c.time) {
             status = STATUS.STATUS_TIME_LIMIT_EXCEEDED;
-        } else if (memory > c.memory * 1024) {
+        } else if (memory > (c.memory + 16) * 1024) {
             status = STATUS.STATUS_MEMORY_LIMIT_EXCEEDED;
         } else if (ctx.config.detail === 'full' && ((code && code !== 13/* Broken Pipe */) || (code === 13 && !resInteractor.code))) {
             status = STATUS.STATUS_RUNTIME_ERROR;
@@ -75,7 +75,7 @@ function judgeCase(c: NormalizedCase) {
             status,
             score,
             time: time / 4,
-            memory : memory - 16384,
+            memory: Math.max(memory - 16384, 0),
             message,
         };
     };
