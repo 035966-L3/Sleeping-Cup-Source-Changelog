@@ -6,9 +6,9 @@ import { getConfig } from './config';
 import { FormatError } from './error';
 import { Context, ContextSubTask } from './judge/interface';
 
-function mergeSumStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (secondStatus === null || secondStatus === undefined || secondStatus === 0 || firstStatus === secondStatus) ? firstStatus : ((firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL && secondStatus > STATUS.STATUS_ACCEPTED && secondStatus < STATUS.STATUS_PARTIAL) ? secondStatus : STATUS.STATUS_PARTIAL); }
+function mergeSumStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (secondStatus === null || secondStatus === undefined || secondStatus === 0 || secondStatus === STATUS.STATUS_CANCELED || firstStatus === secondStatus) ? firstStatus : ((firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL && secondStatus > STATUS.STATUS_ACCEPTED && secondStatus < STATUS.STATUS_PARTIAL || firstStatus === STATUS.STATUS_CANCELED || firstStatus === null || firstStatus === undefined) ? secondStatus : STATUS.STATUS_PARTIAL); }
 
-function mergeMinStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL) ? firstStatus : ((firstStatus === STATUS.STATUS_PARTIAL || secondStatus === STATUS.STATUS_PARTIAL) ? STATUS.STATUS_PARTIAL : firstStatus); }
+function mergeMinStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (firstStatus === STATUS.STATUS_CANCELED) ? secondStatus : ((firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL) ? firstStatus : ((firstStatus === STATUS.STATUS_PARTIAL || secondStatus === STATUS.STATUS_PARTIAL) ? STATUS.STATUS_PARTIAL : firstStatus)); }
 
 interface Task {
     compile: () => Promise<void>;
@@ -28,7 +28,7 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
         subtask.type ||= 'min';
         const ctxSubtask = {
             subtask,
-            status: 0,
+            status: STATUS.STATUS_CANCELED,
             score: subtask.type === 'min'
                 ? subtask.score
                 : 0,
@@ -57,10 +57,10 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
                 if (res?.status !== STATUS.STATUS_CANCELED) {
                     ctxSubtask.score = Score[ctxSubtask.subtask.type](ctxSubtask.score, res.score);
                     ctxSubtask.status = (ctxSubtask.subtask.type === 'sum') ? mergeSumStatus(res.status, ctxSubtask.status) : mergeMinStatus(res.status, ctxSubtask.status);
-                    if (ctxSubtask.status > STATUS.STATUS_ACCEPTED) ctx.failed[sid] = true;
                     ctx.total_time += res.time;
                     ctx.total_memory = Math.max(ctx.total_memory, res.memory);
                 }
+                if (ctxSubtask.status > STATUS.STATUS_ACCEPTED) ctx.failed[sid] = true;
                 if (ctx.config.detail !== 'none') {
                     ctx.next({ ...res ? { case: res } : {}, addProgress: 100 / ctx.config.count });
                 }
