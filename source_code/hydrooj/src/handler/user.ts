@@ -316,7 +316,7 @@ class UserRegisterWithCodeHandler extends Handler {
         const $set: any = this.tdoc.set || {};
         const response = await fetch(`https://disposablemail.io/domain/${mailDomain}`, {
             method: 'GET',
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(60000),
         });
 	const resultText = await response.text();
         if (resultText.includes("is a temporary email address")) {
@@ -326,7 +326,7 @@ class UserRegisterWithCodeHandler extends Handler {
         }
         else {
             $set.avatar = "url:/file/3/default.jpg";
-            $set.priv = 4;
+            $set.priv = 16777220;
         }
         $set.backgroundImage = `/components/profile/backgrounds/${uid % 21 + 1}.jpg`;
         if (mailDomain === 'qq.com' && !Number.isNaN(+id)) {
