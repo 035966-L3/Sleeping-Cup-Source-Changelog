@@ -16,7 +16,7 @@ function judgeCase(c: NormalizedCase) {
                 copyIn: ctx.execute.copyIn,
                 filename: ctx.config.filename,
                 time: c.time,
-                memory: c.memory + 16,
+                memory: c.memory,
                 cacheStdoutAndStderr: true,
                 addressSpaceLimit: address_space_limit,
                 processLimit: process_limit,
@@ -38,7 +38,7 @@ function judgeCase(c: NormalizedCase) {
         if (status === STATUS.STATUS_ACCEPTED) {
             if (time > c.time) {
                 status = STATUS.STATUS_TIME_LIMIT_EXCEEDED;
-            } else if (memory > (c.memory + 16) * 1024) {
+            } else if (memory > c.memory * 1024) {
                 status = STATUS.STATUS_MEMORY_LIMIT_EXCEEDED;
             } else {
                 ({ outData, errData } = { 
@@ -85,7 +85,7 @@ function judgeCase(c: NormalizedCase) {
             status,
             score,
             time: time / 4,
-            memory: Math.max(memory - 16384, 0),
+            memory,
             message,
         };
     };
