@@ -1,5 +1,5 @@
 import {
-    ObjectId, HackRejudgeFailedError, PretestRejudgeFailedError,
+    ObjectId, HackRejudgeFailedError, PretestRejudgeFailedError, ForbiddenError,
     PermissionError, ProblemConfigError, RecordNotFoundError, NotFoundError,
     db, ProblemDoc, TaskModel, param, Types, RecordDoc,
     Tdoc, PERM, PRIV, STATUS, postJudge, UserModel,
@@ -51,6 +51,7 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
     async prepare(domainId: string, numberid: number) {
         this.rdoc = await Temp.gets(numberid);
         if (!this.rdoc) throw new RecordNotFoundError(numberid.toString());
+        if (this.rdoc.uid !== this.user._id) this.checkPerm(PERM.PERM_VIEW_RECORD);
     }
 
     async download() {
@@ -102,7 +103,10 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
             global.Hydro.model.user.getById(domainId, rdoc.uid),
         ]);
 
-        let canViewCode = 1;
+        let canViewCode = rdoc.uid === this.user._id;
+        canViewCode ||= this.user.hasPriv(PRIV.PRIV_READ_RECORD_CODE);
+        canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE);
+        canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE_ACCEPT) && self?.status === STATUS.STATUS_ACCEPTED;
         if (this.tdoc) {
             const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
             canViewCode ||= this.user.own(this.tdoc);
@@ -186,14 +190,14 @@ class Temp {
 
         if (args.type === 'judge' && domainId === 'system' && args.contest?.toString() !== '000000000000000000000000') { // added
             let result = await db.collection('system').findOneAndUpdate(
-  { _id: 'submissionCount' }, 
-  { $inc: { value: 1 } },
-  { 
-    upsert: true, 
-    returnDocument: 'after',
-    upsertDefaults: { value: 0 } 
-  }
-);
+                { _id: 'submissionCount' }, 
+                { $inc: { value: 1 } },
+                { 
+                    upsert: true, 
+                    returnDocument: 'after',
+                    upsertDefaults: { value: 0 } 
+                }
+            );
             numberId = result.value;
         }
 
@@ -255,7 +259,6 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { //
         let idx = this.rdoc.testCases.findIndex(testCase => testCase.id === caseid && testCase.subtaskId === subtaskid);
         if (idx === -1) throw new NotFoundError(`Submission ${numberid} Subtask ${subtaskid} Test ${caseid}`);
         let testCase = this.rdoc.testCases[idx];
-        // if (testCase.inData === undefined) throw new NotFoundError(`Submission ${numberid} Subtask ${subtaskid} Test ${caseid} Detail`);
     }
 
     @param('numberid', Types.PositiveInt)
@@ -286,7 +289,7 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { //
                 this.rdoc = global.Hydro.model.contest.applyProjection(this.tdoc, this.rdoc, this.user);
             }
         }
-        if (!canViewDetail) throw new PermissionError(rid);
+        if (!canViewDetail) throw new ForbiddenError(`Submission ${numberid}`);
 
         // eslint-disable-next-line prefer-const
         let [pdoc, self, udoc] = await Promise.all([
@@ -295,7 +298,10 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { //
             global.Hydro.model.user.getById(domainId, rdoc.uid),
         ]);
 
-        let canViewCode = 1;
+        let canViewCode = rdoc.uid === this.user._id;
+        canViewCode ||= this.user.hasPriv(PRIV.PRIV_READ_RECORD_CODE);
+        canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE);
+        canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE_ACCEPT) && self?.status === STATUS.STATUS_ACCEPTED;
         if (this.tdoc) {
             const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
             canViewCode ||= this.user.own(this.tdoc);
@@ -304,7 +310,17 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { //
             }
             if (!tsdoc?.attend && pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
         } else if (pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
-        if (!canViewCode) throw new PermissionError(rid);
+        if (!canViewCode) throw new ForbiddenError(`Submission ${numberid}`);
+        let canViewData = 0;
+        if (this.tdoc) {
+            const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
+            canViewData ||= this.user.own(this.tdoc);
+            canViewData ||= global.Hydro.model.contest.isDone(this.tdoc);
+            if (tsdoc) {
+                if (tsdoc.attend) canViewData ||= global.Hydro.model.contest.isDone(this.tdoc, tsdoc);
+            }
+        } else canViewData = 1;
+        if (!canViewData) throw new ForbiddenError(`Submission ${numberid}`);
         this.response.template = 'more_number_record_detail.html';
         this.response.body = { rdoc, idx: this.rdoc.testCases.findIndex(testCase => testCase.id === caseid && testCase.subtaskId === subtaskid) };
     }

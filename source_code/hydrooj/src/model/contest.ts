@@ -935,7 +935,7 @@ export async function del(domainId: string, tid: ObjectId) {
 
 export async function get(domainId: string, tid: ObjectId): Promise<Tdoc> {
     const tdoc = await document.get(domainId, document.TYPE_CONTEST, tid);
-    if (!tdoc) throw new ContestNotFoundError(tid);
+    if (!tdoc) throw new ContestNotFoundError(domainId, tid);
     return tdoc;
 }
 
@@ -998,7 +998,7 @@ export async function updateStatus(
     }: { status?: STATUS, score?: number, subtasks?: Record<number, SubtaskResult>, lang?: string } = {},
 ) {
     const tdoc = await get(domainId, tid);
-    if (tdoc.balloon && status === STATUS.STATUS_ACCEPTED) await addBalloon(domainId, tid, uid, rid, pid);
+    if (tdoc.balloon && status === STATUS.STATUS_ACCEPTED && !isLocked(tdoc)) await addBalloon(domainId, tid, uid, rid, pid);
     const tsdoc = await document.revPushStatus(tdoc.domainId, document.TYPE_CONTEST, tdoc.docId, uid, 'journal', {
         rid, pid, status, score, subtasks, lang,
     }, 'rid');
