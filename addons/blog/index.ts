@@ -10,40 +10,7 @@ import {
 import { ProblemModel } from 'hydrooj/src/model/problem';
 export const BlogNotFoundError = Err('BlogNotFoundError', DocumentNotFoundError, 'Blog {1} not found.');
 export const DomainNotSupportedError = Err('DomainNotSupportedError', DocumentNotFoundError, 'Domain {0} not supported.');
-
 export const TYPE_BLOG = 70 as const;
-export const TYPE_BLOG_SETTING = 10070 as const;
-export interface BlogSettingDoc {
-    docType: 10070;
-    docId: ObjectId;
-    problemId: string;
-    solutionAllowed: boolean;
-}
-export class BlogSettingModel {
-    static async setSolutionAllowed(problemId: string, allowed: boolean) {
-        // Use problemId as content, and owner as 1 (system user)
-        await DocumentModel.add(
-            'system',
-            problemId, // content
-            1, // owner
-            TYPE_BLOG_SETTING,
-            null,
-            null,
-            null,
-            { problemId, solutionAllowed: allowed }
-        );
-    }
-
-    static async isSolutionAllowed(problemId: string): Promise<boolean> {
-        // Query the latest setting from the database
-        const setting = await DocumentModel.getMulti('system', TYPE_BLOG_SETTING, { problemId })
-            .sort({ _id: -1 })
-            .limit(1)
-            .next();
-        // 默认允许提交题解
-        return setting ? setting.solutionAllowed : true;
-    }
-}
 export interface BlogDoc {
     docType: 70;
     docId: ObjectId;
@@ -56,23 +23,20 @@ export interface BlogDoc {
     views: number;
     reply: any[];
     react: Record<string, number>;
-    isPrivate: boolean; // 是否私有
-    isPublic: boolean; // 是否通过公开审核
-    // 新增字段：审核状态和备注
+    isPrivate: boolean;
+    isPublic: boolean;
     reviewStatus: 'pending' | 'approved' | 'rejected';
     reviewNote?: string;
-    solutionFor?: string; // 新增：题解编号
-    showReviewer?: boolean; // 新增：是否显示审核管理员
-    reviewerUid?: number;   // 新增：审核管理员UID
+    solutionFor?: number;
+    showReviewer?: boolean;
+    reviewerUid?: number;
 }
 declare module 'hydrooj' {
     interface Model {
         blog: typeof BlogModel;
-        blogsetting: typeof BlogSettingModel;
     }
     interface DocType {
         [TYPE_BLOG]: BlogDoc;
-        [TYPE_BLOG_SETTING]: BlogSettingDoc;
     }
 }
 export class BlogModel {
@@ -104,7 +68,7 @@ export class BlogModel {
         return await DocumentModel.get('system', TYPE_BLOG, did);
     }
 
-    static edit(did: ObjectId, title: string, content: string, isPrivate: boolean, solutionFor?: string, noVerify?: boolean, alltg?: boolean): Promise<BlogDoc> {
+    static edit(did: ObjectId, title: string, content: string, isPrivate: boolean, solutionFor?: number, noVerify?: boolean, alltg?: boolean): Promise<BlogDoc> {
         const getReviewStatus = async (dataId: ObjectId) => {
             const doc: BlogDoc = await this.get(dataId);
             return doc.reviewStatus;
@@ -239,7 +203,7 @@ export class BlogModel {
 
     // 新增：提交题解
     static async addSolution(
-        owner: number, title: string, content: string, solutionFor: string, ip?: string
+        owner: number, title: string, content: string, solutionFor: number, ip?: string
     ): Promise<ObjectId> {
         const payload: Partial<BlogDoc> = {
             content,
@@ -263,8 +227,8 @@ export class BlogModel {
     }
 
     // 新增：获取某题所有题解
-    static getSolutions(problemId: string, isAdmin: boolean = false, uid?: number) {
-        const filter: Filter<BlogDoc> = { solutionFor: problemId };
+    static getSolutions(problemId: number, isAdmin: boolean = false, uid?: number) {
+        const filter: Filter<BlogDoc> = { solutionFor: +problemId };
         if (!isAdmin && uid) {
             filter.$or = [
                 { owner: uid },
@@ -274,21 +238,12 @@ export class BlogModel {
         // 管理员不过滤
         return DocumentModel.getMulti('system', TYPE_BLOG, filter).sort({ _id: -1 });
     }
-
-    // 新增：题解提交开关
-    static async setSolutionAllowed(problemId: string, allowed: boolean) {
-        await global.Hydro.model.blogsetting.setSolutionAllowed(problemId, allowed);
-    }
-    static async isSolutionAllowed(problemId: string): Promise<boolean> {
-        return await global.Hydro.model.blogsetting.isSolutionAllowed(problemId);
-    }
 }
-global.Hydro.model.blogsetting = BlogSettingModel;
 global.Hydro.model.blog = BlogModel;
 class BlogSolutionAPIHandler extends Handler {
     @param('did', Types.ObjectId)
     @param('solutionFor', Types.String, true)
-    async get({ domainId }, did: ObjectId, solutionFor = '') {
+    async get({ domainId }, did: ObjectId, solutionFor = -1) {
         let doc = await BlogModel.get(did);
         if(!doc){
             throw new BlogNotFoundError(domainId, did);
@@ -317,7 +272,7 @@ class BlogUserHandler extends BlogHandler {
         // 只保留有权查看的内容，并对题解做特判
         const filtered = [];
         for (const doc of allDocs) {
-            if (doc.solutionFor) {
+            if (typeof doc.solutionFor === 'number') {
                 // 题解特判
                 if (isAdmin || doc.owner === this.user._id) {
                     filtered.push(doc);
@@ -375,7 +330,7 @@ class BlogPlazaHandler extends BlogHandler {
         // 只保留有权查看的内容
         const filtered = [];
         for (const doc of allDocs) {
-            if (doc.solutionFor) {
+            if (typeof doc.solutionFor === 'number') {
                 // 题解特判
                 if (this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
                     filtered.push(doc);
@@ -440,7 +395,7 @@ class BlogDetailHandler extends BlogHandler {
         if (!canView) throw new BlogNotFoundError(domainId, did);
 
         // 新增：如果是题解，且题目隐藏且没有管理员权限，则禁止访问
-        if (this.ddoc?.solutionFor) {
+        if (typeof this.ddoc?.solutionFor === 'number') {
             const problem = await ProblemModel.get(domainId, this.ddoc.solutionFor);
             if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
                 throw new BlogNotFoundError(domainId, did);
@@ -503,7 +458,7 @@ class BlogEditHandler extends BlogHandler {
         if (!isPrivate && !this.user.hasPriv(PRIV.PRIV_UNLIMITED_ACCESS)) {
             await global.Hydro.model.opcount.inc('blog.edit', this.user._id.toString(), 60, 1);
         }
-        if (this.ddoc.solutionFor && ProblemModel.get('system', this.ddoc.solutionFor)) {
+        if (typeof this.ddoc.solutionFor === 'number' && ProblemModel.get('system', this.ddoc.solutionFor)) {
             if (!this.user.own(this.ddoc!)) this.checkPriv(PRIV.PRIV_EDIT_SYSTEM);
             await Promise.all([
                 BlogModel.edit(did, title, content, false),
@@ -600,9 +555,9 @@ class BlogRejectHandler extends BlogHandler {
 
 // 新增：题解列表页面
 class SolutionHandler extends Handler {
-    @param('pid', Types.String)
+    @param('pid', Types.Number)
     @param('page', Types.PositiveInt, true)
-    async get({ domainId }, pid: string, page = 1) {
+    async get({ domainId }, pid: number, page = 1) {
         // 检查题目是否存在
         if (domainId != 'system') {
             throw new DomainNotSupportedError(domainId);
@@ -623,25 +578,22 @@ class SolutionHandler extends Handler {
             uids.map(uid => UserModel.getById(domainId, uid))
         );
         const userMap = new Map(uids.map((uid, i) => [uid, udocs[i]]));
-        // 题解提交开关
-        const allowed = await BlogModel.isSolutionAllowed(pid);
         this.response.template = 'blog_main.html';
         this.response.body = {
             ddocs: filtered.slice((page - 1) * 10, page * 10),
             dpcount: Math.ceil(filtered.length / 10),
             page,
             udocs: userMap,
-            udoc: { _id: 0, uname: `${pid}题解`, blogpic: '' },
+            udoc: { _id: 0, uname: `${pid} 题解`, blogpic: '' },
             solutionFor: pid,
-            solutionAllowed: allowed,
         };
     }
 }
 
 // 新增：提交题解页面
 class SolutionEditHandler extends Handler {
-    @param('pid', Types.String)
-    async get({ domainId }, pid: string) {
+    @param('pid', Types.Number)
+    async get({ domainId }, pid: number) {
         // 检查题目是否存在
         if (domainId != 'system') {
             throw new DomainNotSupportedError(domainId);
@@ -652,13 +604,13 @@ class SolutionEditHandler extends Handler {
             throw new ProblemNotFoundError(domainId, pid);
         }
         this.response.template = 'blog_edit.html';
-        this.response.body = { ddoc: { title: pid + "\'s Solution" }, solutionFor: pid };
+        this.response.body = { ddoc: { title: "P" + pid + "\'s Solution" }, solutionFor: pid };
     }
 
-    @param('pid', Types.String)
+    @param('pid', Types.Number)
     @param('title', Types.Title)
     @param('content', Types.Content)
-    async postCreate({ domainId }, pid: string, title: string, content: string) {
+    async postCreate({ domainId }, pid: number, title: string, content: string) {
         if (domainId != 'system') {
             throw new DomainNotSupportedError(domainId);
         }
@@ -672,8 +624,6 @@ class SolutionEditHandler extends Handler {
             throw new ProblemNotFoundError(domainId, pid);
         }
         // 检查题解提交开关
-        const allowed = await BlogModel.isSolutionAllowed(pid);
-        if (!allowed) throw new Error(_('Solution submission is disabled for this problem'));
         await this.limitRate('add_solution', 3600, 30);
         const did = await BlogModel.addSolution(this.user._id, title, content, pid, this.request.ip);
         this.response.body = { did };
@@ -681,33 +631,20 @@ class SolutionEditHandler extends Handler {
     }
 }
 
-// 新增：题解提交开关设置（管理员）
-class SolutionSettingHandler extends Handler {
-    @param('pid', Types.String)
-    @param('allowed', Types.Boolean)
-    async post({ domainId }, pid: string, allowed: boolean) {
-        if (domainId != 'system') {
-            throw new DomainNotSupportedError(domainId);
-        }
-        this.checkPriv(PRIV.PRIV_EDIT_SYSTEM);
-        await BlogModel.setSolutionAllowed(pid, allowed);
-        this.back({ success: true, allowed });
-    }
-}
 // 新增：题解详情页面（复用 BlogDetailHandler）
 class SolutionDetailHandler extends BlogDetailHandler {
-    @param('pid', Types.String)
+    @param('pid', Types.Number)
     @param('did', Types.ObjectId)
-    async get({ domainId }, pid: string, did: ObjectId) {
+    async get({ domainId }, pid: number, did: ObjectId) {
         if (domainId != 'system') {
             throw new DomainNotSupportedError(domainId);
         }
         await super.get({ domainId }, did);
-        this.response.body.solutionFor = this.ddoc?.solutionFor ?? '';
-        if ((this.ddoc?.solutionFor ?? '') !== pid) {
+        this.response.body.solutionFor = +this.ddoc?.solutionFor;
+        if (+this.ddoc?.solutionFor !== +pid) {
             throw new BlogNotFoundError(domainId, did);
         }
-        const problem = await ProblemModel.get(domainId, this.ddoc.solutionFor);
+        const problem = await ProblemModel.get(domainId, +this.ddoc.solutionFor);
         // 题目隐藏且没有管理员权限时不能查看
         if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
             throw new BlogNotFoundError(domainId, did);
@@ -726,22 +663,8 @@ class ApiBlogListHandler extends Handler {
         this.response.body = ret;
     }
 }
-// async function debug(){
-//     //get all blogs
-//     const blogs = await BlogModel.getMulti({}).toArray();
-//     for(let bloga of blogs){
-//         let blog: BlogDoc = bloga;
-//         if(blog.solutionFor=='U205P1'){
-//             console.log(blog);
-//             await BlogModel.edit(blog.docId, blog.title, blog.content, blog.isPrivate, 
-//                 'emptyemptyempty', true, true
-//             );
-//         }
-//     }
-// }
 // 路由注册
 export async function apply(ctx: Context) {
-    // await debug();
     ctx.Route('blog_main', '/blog/:uid', BlogUserHandler);
     ctx.Route('blog_plaza', '/blogplaza', BlogPlazaHandler, PRIV.PRIV_USER_PROFILE);
     ctx.Route('blog_create', '/blog/:uid/create', BlogEditHandler, PRIV.PRIV_USER_PROFILE);
@@ -755,7 +678,6 @@ export async function apply(ctx: Context) {
     // 题解相关路由
     ctx.Route('solution_list', '/solution/:pid', SolutionHandler);
     ctx.Route('solution_create', '/solution/:pid/create', SolutionEditHandler, PRIV.PRIV_USER_PROFILE);
-    ctx.Route('solution_setting', '/solution/:pid/setting', SolutionSettingHandler, PRIV.PRIV_EDIT_SYSTEM);
     ctx.Route('solution_detail', '/solution/:pid/:did', SolutionDetailHandler);
 
     ctx.Route('api_blog_list', '/api/blog/list', ApiBlogListHandler, PRIV.PRIV_EDIT_SYSTEM);
@@ -768,6 +690,3 @@ export async function apply(ctx: Context) {
     ctx.injectUI('UserDropdown', 'blog_plaza', (h) => ({ icon: 'book', displayName: 'Blog Plaza', uid: h.user._id.toString() }),
         PRIV.PRIV_USER_PROFILE);
 }
-
-
-

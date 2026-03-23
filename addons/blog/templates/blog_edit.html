@@ -15,17 +15,17 @@
               </label>
             </div>
           </div>
-          {{ form.form_textarea({
-          columns:12,
-          label:'Content',
-          name:'content',
-          value:ddoc.content|default(''),
-          hotkeys:'ctrl+enter:submit',
-          markdown:true,
-          required:true,
-          extra_style:'height: 500px',
-          extra_textarea_class:'auto-resize'
-          }) }}
+            {{ form.form_textarea({
+              columns :12,
+              label: 'Content',
+              name: 'content',
+              value: ddoc.content|default(''),
+              hotkeys: 'ctrl+enter:submit',
+              markdown: true,
+              required: true,
+              extra_style: 'height: 500px',
+              extra_textarea_class: 'auto-resize'
+            }) }}
           {% if solutionFor or (ddoc and ddoc.solutionFor) %}
           <div class="row">
             <div class="medium-12 columns">
@@ -41,20 +41,8 @@
               <label>
                 {{ _('Privacy Setting') }}
                 <select name="isPrivate" class="select">
-                  <option value="false" {% if not ddoc or ddoc.isPrivate===false %}selected{% endif %}>{{ _('Public
-                    (needs review)') }}</option>
+                  <option value="false" {% if not ddoc or ddoc.isPrivate===false %}selected{% endif %}>{{ _('Public (needs review)') }}</option>
                   <option value="true" {% if ddoc and ddoc.isPrivate %}selected{% endif %}>{{ _('Private') }}</option>
-                </select>
-              </label>
-              <label>
-                {{ _('Collection Setting') }}
-                <select name="collectionId" class="select">
-                  <option value="">{{ _('No Collection') }}</option>
-                  {% for collection in collections %}
-                  <option value="{{ collection.docId }}" {% if ddoc and ddoc.collectionId and
-                    ddoc.collectionId.toString()==collection.docId.toString() %}selected{% endif %}>{{ collection.title
-                    }}</option>
-                  {% endfor %}
                 </select>
               </label>
               {% if ddoc and ddoc.isPublic === false and not ddoc.isPrivate %}

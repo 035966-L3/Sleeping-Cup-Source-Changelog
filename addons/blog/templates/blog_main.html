@@ -9,25 +9,10 @@
       <!-- 题解页面顶部区域 -->
       {% if solutionFor %}
       <div class="section__header">
-        <h1 class="section__title">{{ _('Solution List') }} - <a href="/p/{{ solutionFor }}" style="color:#5f9fd6">{{
-            solutionFor }}</a></h1>
-        {% if solutionAllowed %}
-        <a href="{{ url('solution_create', pid=solutionFor) }}" class="primary button">{{ _('Submit_Solution') }}</a>
-        {% else %}
-        <span class="tag error">{{ _('Solution submission is disabled for this problem') }}</span>
-        {% endif %}
-        {% if handler.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) %}
-        <form method="post" action="{{ url('solution_setting', pid=solutionFor) }}" style="display:inline;">
-          <input type="hidden" name="allowed" value="{{ not solutionAllowed }}">
-          <button type="submit" class="button">
-            {% if solutionAllowed %}
-            {{ _('Disable Solution Submission') }}
-            {% else %}
-            {{ _('Enable Solution Submission') }}
-            {% endif %}
-          </button>
-        </form>
-        {% endif %}
+        <h1 class="section__title">
+          {{ _('Solution List') }} - <a href="/p/{{ solutionFor }}" style="color:#5f9fd6">{{ solutionFor }}</a>
+          <a href="{{ url('solution_create', pid=solutionFor) }}" class="primary button" style="float: right;">{{ _('Submit_Solution') }}</a>
+        </h1>
       </div>
       {% endif %}
       {% if not ddocs.length %}
