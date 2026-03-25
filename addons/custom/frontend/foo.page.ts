@@ -101,14 +101,6 @@ html.theme--dark a.user-profile-name.uname--lv0 {
     background-color: #1f1f1f;
 }
 
-div:has(> .ConfigMonacoEditor) {
-  overflow: hidden !important;
-}
-
-.ConfigMonacoEditor + .textbox {
-    height: 100% !important;
-}
-
 .contest-type--sleepingcupcoder .contest-type-tag {
     background: #ed5f82
 }
@@ -139,4 +131,8 @@ addPage(new AutoloadPage('my_page_name', () => {
 
 addPage(new NamedPage(['user_detail'], () => {
   draw();
+}));
+
+addPage(new NamedPage(['problem_config'], () => {
+  trigger();
 }));
