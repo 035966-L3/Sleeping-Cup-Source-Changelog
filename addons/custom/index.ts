@@ -18,16 +18,14 @@ export const collV: Collection<VUdoc> = db.collection('vuser');
 export const collGroup: Collection<GDoc> = db.collection('user.group');
 UserModel.getListForRender = async function (domainId: string, uids: number[]) {
     const [udocs, vudocs, dudocs] = await Promise.all([
-        UserModel.getMulti({ _id: { $in: uids } }, ['acm', 'acms', 'realname_flag', 'realname_name', '_id', 'uname', 'mail', 'avatar', 'school', 'studentId', 'certification_flag', 'certification_adder', 'rating_changes']).toArray(),
+        UserModel.getMulti({ _id: { $in: uids } }, ['_id', 'uname', 'mail', 'avatar', 'school', 'studentId']).toArray(),
         collV.find({ _id: { $in: uids } }).toArray(),
-        DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, displayName: true, level: true, rp: true }).toArray()
-        // DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, displayName: true, level: true }).toArray()
+        DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, level: true, rp: true }).toArray()
     ]);
     const udict = {};
     for (const udoc of udocs) udict[udoc._id] = udoc;
     for (const udoc of vudocs) udict[udoc._id] = { ...udict[udoc._id], ...udoc };
-    for (const dudoc of dudocs){
-        udict[dudoc.uid].displayName = dudoc.displayName;
+    for (const dudoc of dudocs) {
         udict[dudoc.uid].level = dudoc.level;
         udict[dudoc.uid].rp = dudoc.rp;
     }
@@ -39,8 +37,8 @@ UserModel.getListForRender = async function (domainId: string, uids: number[]) {
     for (const key in udict) {
         udict[key].school ||= '';
         udict[key].studentId ||= '';
-        udict[key].displayName ||= udict[key].uname;
         udict[key].avatar ||= `gravatar:${udict[key].mail}`;
+        udict[key].displayName = '';
     }
     return udict as BaseUserDict;
 };
@@ -346,7 +344,7 @@ export async function apply(ctx: Context) {
         const rudocs = that.response.body.rudocs;
         const roles = Object.keys(rudocs);
         for (let role of roles) {
-            let newulist=[];
+            let newulist = [];
             let ufr = rudocs[role].sort((a, b) => a._id - b._id);
             for(let user of ufr) {
                 newulist.push(await UserModel.getById('system', user._id));
