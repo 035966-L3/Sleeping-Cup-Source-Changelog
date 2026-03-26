@@ -1,1 +1,1 @@
-import './rid.css';
+import './record.css';
