@@ -142,7 +142,7 @@ class Temp {
         if (!res) return null;
         return res;
     }
-    static async adds(
+    static async add(
         domainId: string, pid: number, uid: number,
         lang: string, code: string, addTask: boolean,
         args: {
@@ -298,5 +298,5 @@ export async function apply(ctx: Context) {
     ctx.Route('more_number_record_detail', '/submission/detail/:numberid/:subtaskid/:caseid', MoreNumberRecordDetailHandler);
     global.Hydro.model.record.PROJECTION_LIST.push('numberId');
     global.Hydro.model.record.gets = Temp.gets;
-    global.Hydro.model.record.adds = Temp.adds;
+    global.Hydro.model.record.add = Temp.add;
 }
