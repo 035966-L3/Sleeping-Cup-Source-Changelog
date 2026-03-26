@@ -1,0 +1,7 @@
+{
+    "name": "record",
+    "version": "0.0.0",
+    "description": "Number record ID, input/output details, and 'PC' (Partially correct) support",
+    "author": "Sleeping Cup",
+    "license": "GPL-3.0-or-later"
+}

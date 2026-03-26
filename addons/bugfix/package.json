@@ -1,0 +1,7 @@
+{
+    "name": "bugfix",
+    "version": "0.0.0",
+    "description": "Dark mode CSS issues, contest edit page typo, problem edit page duplicate Monaco scroll bar, and username render fix",
+    "author": "Sleeping Cup",
+    "license": "GPL-3.0-or-later"
+}

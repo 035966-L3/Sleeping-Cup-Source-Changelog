@@ -1,10 +1,8 @@
 import {
-    ObjectId, HackRejudgeFailedError, PretestRejudgeFailedError, ForbiddenError,
+    HackRejudgeFailedError, PretestRejudgeFailedError, ForbiddenError,
     PermissionError, ProblemConfigError, RecordNotFoundError, NotFoundError,
-    db, ProblemDoc, TaskModel, param, Types, RecordDoc,
-    Tdoc, PERM, PRIV, STATUS, postJudge, UserModel,
-    Udoc, VUdoc, GDoc, DomainModel, BaseUserDict,
-    Context, Handler
+    db, ProblemDoc, TaskModel, param, Types, RecordDoc, ObjectId,
+    Tdoc, PERM, PRIV, STATUS, postJudge, Context, Handler
 } from 'hydrooj';
 
 import * as contest from 'hydrooj/src/model/contest';
@@ -13,35 +11,6 @@ import { ContestDetailBaseHandler } from 'hydrooj/src/handler/contest';
 
 import { omit, pick } from 'lodash';
 
-export const coll: Collection<Udoc> = db.collection('user');
-export const collV: Collection<VUdoc> = db.collection('vuser');
-export const collGroup: Collection<GDoc> = db.collection('user.group');
-UserModel.getListForRender = async function (domainId: string, uids: number[]) {
-    const [udocs, vudocs, dudocs] = await Promise.all([
-        UserModel.getMulti({ _id: { $in: uids } }, ['_id', 'uname', 'mail', 'avatar', 'school', 'studentId']).toArray(),
-        collV.find({ _id: { $in: uids } }).toArray(),
-        DomainModel.getDomainUserMulti(domainId, uids).project({ uid: true, level: true, rp: true }).toArray()
-    ]);
-    const udict = {};
-    for (const udoc of udocs) udict[udoc._id] = udoc;
-    for (const udoc of vudocs) udict[udoc._id] = { ...udict[udoc._id], ...udoc };
-    for (const dudoc of dudocs) {
-        udict[dudoc.uid].level = dudoc.level;
-        udict[dudoc.uid].rp = dudoc.rp;
-    }
-    for (const uid of uids) {
-        if (!udict[uid]) {
-            udict[uid] = { ...UserModel.defaultUser };
-        }
-    }
-    for (const key in udict) {
-        udict[key].school ||= '';
-        udict[key].studentId ||= '';
-        udict[key].avatar ||= `gravatar:${udict[key].mail}`;
-        udict[key].displayName = '';
-    }
-    return udict as BaseUserDict;
-};
 export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // added
     rdoc: RecordDoc;
 
@@ -168,12 +137,12 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
     }
 }
 class Temp {
-    static async gets(arg0: number) { // added
+    static async gets(arg0: number) {
         const res = await global.Hydro.model.record.coll.findOne({ numberId: arg0 });
         if (!res) return null;
         return res;
     }
-    static async add(
+    static async adds(
         domainId: string, pid: number, uid: number,
         lang: string, code: string, addTask: boolean,
         args: {
@@ -184,9 +153,9 @@ class Temp {
             type: 'judge' | 'rejudge' | 'pretest' | 'hack' | 'generate';
         } = { type: 'judge' },
     ) {
-        let numberId = 0; // added
+        let numberId = 0;
 
-        if (args.type === 'judge' && domainId === 'system' && args.contest?.toString() !== '000000000000000000000000') { // added
+        if (args.type === 'judge' && domainId === 'system' && !args.contest?.toString().startsWith('0'.repeat(24))) {
             let result = await db.collection('system').findOneAndUpdate(
                 { _id: 'submissionCount' }, 
                 { $inc: { value: 1 } },
@@ -216,7 +185,7 @@ class Temp {
             judger: null,
             judgeAt: null,
             rejudged: false,
-            numberId, // added
+            numberId,
         };
         let isContest = !!args.contest;
         if (args.contest) data.contest = args.contest;
@@ -245,7 +214,7 @@ class Temp {
     }
 }
 
-export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { // added
+export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler {
     rdoc: RecordDoc;
 
     @param('numberid', Types.PositiveInt)
@@ -324,33 +293,10 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler { //
     }
 }
 
-
-
 export async function apply(ctx: Context) {
     ctx.Route('number_record_detail', '/submission/:numberid', NumberRecordDetailHandler);
     ctx.Route('more_number_record_detail', '/submission/detail/:numberid/:subtaskid/:caseid', MoreNumberRecordDetailHandler);
     global.Hydro.model.record.PROJECTION_LIST.push('numberId');
     global.Hydro.model.record.gets = Temp.gets;
-    global.Hydro.model.record.add = Temp.add;
-    ctx.on('handler/after/SystemUserPriv#get', async (that) => {
-        const udocs = that.response.body.udocs;
-        const udict = [];
-        for (const udoc of udocs) {
-            udict.push(await UserModel.getById('system', udoc._id));
-        }
-        that.response.body.udocs = udict;
-    });
-    ctx.on('handler/after/DomainUser#get', async (that) => {
-        const rudocs = that.response.body.rudocs;
-        const roles = Object.keys(rudocs);
-        for (let role of roles) {
-            let newulist = [];
-            let ufr = rudocs[role].sort((a, b) => a._id - b._id);
-            for(let user of ufr) {
-                newulist.push(await UserModel.getById('system', user._id));
-            }
-            rudocs[role] = newulist;
-        }
-        that.response.body.udocs = rudocs;
-    });
+    global.Hydro.model.record.adds = Temp.adds;
 }

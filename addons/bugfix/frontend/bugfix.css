@@ -1,0 +1,19 @@
+.theme--dark .section__tab-header-item {
+    color: #d8e0e6 !important;
+}
+
+.theme--dark .problem__tag-item {
+    color: #d8dee3;
+}
+.theme--dark .search-sort {
+    color: #eee;
+    background-color: #1f1f1f;
+}
+
+.contest-type--sleepingcupcoder .contest-type-tag {
+    background: #ed5f82
+}
+
+.contest-type--sleepingcupcoder .contest-type-tag:hover {
+    background: #f695ac
+}

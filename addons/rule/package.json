@@ -1,7 +1,7 @@
 {
-    "name": "blog",
+    "name": "rule",
     "version": "0.0.0",
-    "description": "Blog support",
+    "description": "Sleeping Cup contest ruleset",
     "author": "Sleeping Cup",
     "license": "GPL-3.0-or-later"
 }

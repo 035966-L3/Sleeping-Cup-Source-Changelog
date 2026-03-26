@@ -1,0 +1,7 @@
+{
+    "name": "register",
+    "version": "0.0.0",
+    "description": "Temporary mail check and background image allocation at registry",
+    "author": "Sleeping Cup",
+    "license": "GPL-3.0-or-later"
+}

@@ -1,7 +1,7 @@
 {
-    "name": "blog",
+    "name": "block",
     "version": "0.0.0",
-    "description": "Blog support",
+    "description": "Block deprecated features",
     "author": "Sleeping Cup",
     "license": "GPL-3.0-or-later"
 }

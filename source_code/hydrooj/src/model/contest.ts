@@ -1225,7 +1225,6 @@ export async function apply(ctx: Context) {
 
 global.Hydro.model.contest = {
     apply,
-
     RULES,
     PrintTaskStatus,
     buildContestRule,

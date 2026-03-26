@@ -32,7 +32,7 @@ import {
 import fetch from 'node-fetch'; // Warning: extra requirements
 
 async function successfulAuth(this: Handler, udoc: User) {
-    await user.setById(udoc._id, { loginat: new Date(), loginip: this.request.ip });
+    if (udoc._id !== 0) await user.setById(udoc._id, { loginat: new Date(), loginip: this.request.ip });
     this.context.HydroContext.user = udoc;
     this.session.viewLang = '';
     this.session.uid = udoc._id;
@@ -41,7 +41,7 @@ async function successfulAuth(this: Handler, udoc: User) {
     this.session.scope = PERM.PERM_ALL.toString();
     this.session.oauthBind = null;
     this.session.recreate = true;
-    await oplog.log(this, 'user.loginSuccess', { uid: udoc._id });
+    if (udoc._id !== 0) await oplog.log(this, 'user.loginSuccess', { uid: udoc._id });
 }
 
 class UserLoginHandler extends Handler {

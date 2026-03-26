@@ -1,0 +1,1 @@
+import './rid.css';
