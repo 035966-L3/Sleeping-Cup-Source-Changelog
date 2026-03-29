@@ -242,7 +242,7 @@ export class BlogModel {
 global.Hydro.model.blog = BlogModel;
 class BlogSolutionAPIHandler extends Handler {
     @param('did', Types.ObjectId)
-    @param('solutionFor', Types.String, true)
+    @param('solutionFor', Types.PositiveInt, true)
     async get({ domainId }, did: ObjectId, solutionFor = -1) {
         let doc = await BlogModel.get(did);
         if(!doc){
@@ -555,7 +555,7 @@ class BlogRejectHandler extends BlogHandler {
 
 // 新增：题解列表页面
 class SolutionHandler extends Handler {
-    @param('pid', Types.Number)
+    @param('pid', Types.PositiveInt)
     @param('page', Types.PositiveInt, true)
     async get({ domainId }, pid: number, page = 1) {
         // 检查题目是否存在
@@ -592,7 +592,7 @@ class SolutionHandler extends Handler {
 
 // 新增：提交题解页面
 class SolutionEditHandler extends Handler {
-    @param('pid', Types.Number)
+    @param('pid', Types.PositiveInt)
     async get({ domainId }, pid: number) {
         // 检查题目是否存在
         if (domainId != 'system') {
@@ -607,7 +607,7 @@ class SolutionEditHandler extends Handler {
         this.response.body = { ddoc: { title: "P" + pid + "\'s Solution" }, solutionFor: pid };
     }
 
-    @param('pid', Types.Number)
+    @param('pid', Types.PositiveInt)
     @param('title', Types.Title)
     @param('content', Types.Content)
     async postCreate({ domainId }, pid: number, title: string, content: string) {
@@ -633,7 +633,7 @@ class SolutionEditHandler extends Handler {
 
 // 新增：题解详情页面（复用 BlogDetailHandler）
 class SolutionDetailHandler extends BlogDetailHandler {
-    @param('pid', Types.Number)
+    @param('pid', Types.PositiveInt)
     @param('did', Types.ObjectId)
     async get({ domainId }, pid: number, did: ObjectId) {
         if (domainId != 'system') {
