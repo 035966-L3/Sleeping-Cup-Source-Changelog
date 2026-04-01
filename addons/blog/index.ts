@@ -1,13 +1,11 @@
 import {
     _, Context, ProblemNotFoundError, DocumentNotFoundError, DocumentModel, Filter,
-    Handler, NumberKeys, ObjectId, OplogModel,
+    Handler, NumberKeys, ObjectId, OplogModel, ProblemModel,
     param, PRIV, Types, UserModel, MessageModel, ValidationError
 } from 'hydrooj';
 import {
     CreateError as Err,
 } from '@hydrooj/framework';
-// 新增引入 ProblemModel
-import { ProblemModel } from 'hydrooj/src/model/problem';
 export const BlogNotFoundError = Err('BlogNotFoundError', DocumentNotFoundError, 'Blog {1} not found.');
 export const DomainNotSupportedError = Err('DomainNotSupportedError', DocumentNotFoundError, 'Domain {0} not supported.');
 export const TYPE_BLOG = 70 as const;
@@ -155,20 +153,10 @@ export class BlogModel {
             showReviewer: showReviewer,
             reviewerUid
         });
-
-        // 发送审核通过通知
-        await MessageModel.send(
-            1, // 系统发送，通常用1表示系统用户
-            blog.owner, // 接收者为博客作者
-            note
-                ? `您的博客《${blog.title}》已通过审核，现在可以公开查看。审核备注：${note}`
-                : `您的博客《${blog.title}》已通过审核，现在可以公开查看。`
-        );
-
         return updated;
     }
 
-    // 新增：打回功能
+    // 打回功能
     static async reject(did: ObjectId, note: string = '', showReviewer: boolean = false, reviewerUid?: number): Promise<BlogDoc> {
         const blog = await DocumentModel.get('system', TYPE_BLOG, did);
         const updated = await DocumentModel.set('system', TYPE_BLOG, did, {
@@ -178,22 +166,10 @@ export class BlogModel {
             showReviewer,
             reviewerUid
         });
-
-        // 发送审核拒绝通知
-        const content = note
-            ? `您的博客《${blog.title}》未通过审核，对审核结果有疑问请联系管理员交流。原因：${note}`
-            : `您的博客《${blog.title}》未通过审核，请修改后重新提交。对审核结果有疑问请联系管理员交流。`;
-
-        await MessageModel.send(
-            1, // 系统发送
-            blog.owner, // 接收者为博客作者
-            content
-        );
-
         return updated;
     }
 
-    // 新增：获取待审核博客列表
+    // 获取待审核博客列表
     static getPendingReviews() {
         return DocumentModel.getMulti('system', TYPE_BLOG, {
             reviewStatus: 'pending',
@@ -201,7 +177,7 @@ export class BlogModel {
         }).sort({ updateAt: 1 });
     }
 
-    // 新增：提交题解
+    // 提交题解
     static async addSolution(
         owner: number, title: string, content: string, solutionFor: number, ip?: string
     ): Promise<ObjectId> {
@@ -226,7 +202,7 @@ export class BlogModel {
         return payload.docId;
     }
 
-    // 新增：获取某题所有题解
+    // 获取某题所有题解
     static getSolutions(problemId: number, isAdmin: boolean = false, uid?: number) {
         const filter: Filter<BlogDoc> = { solutionFor: +problemId };
         if (!isAdmin && uid) {
@@ -245,9 +221,7 @@ class BlogSolutionAPIHandler extends Handler {
     @param('solutionFor', Types.PositiveInt, true)
     async get({ domainId }, did: ObjectId, solutionFor = -1) {
         let doc = await BlogModel.get(did);
-        if(!doc){
-            throw new BlogNotFoundError(domainId, did);
-        }
+        if (!doc) throw new BlogNotFoundError(domainId, did);
         await BlogModel.edit(did, doc.title, doc.content, doc.isPrivate, solutionFor, true);
     }
 }
@@ -394,10 +368,10 @@ class BlogDetailHandler extends BlogHandler {
 
         if (!canView) throw new BlogNotFoundError(domainId, did);
 
-        // 新增：如果是题解，且题目隐藏且没有管理员权限，则禁止访问
+        // 如果是题解，且题目隐藏，不是自己的题目，没有管理员权限，则禁止访问
         if (typeof this.ddoc?.solutionFor === 'number') {
             const problem = await ProblemModel.get(domainId, this.ddoc.solutionFor);
-            if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
+            if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) && problem?.owner !== this.user._id) {
                 throw new BlogNotFoundError(domainId, did);
             }
         }
@@ -522,7 +496,7 @@ class BlogReviewHandler extends BlogHandler {
         this.back({ success: true, message: note ? _('Post approved successfully with note') : _('Post approved successfully') });
     }
 
-    // 新增：打回功能
+    // 打回功能
     @param('did', Types.ObjectId)
     @param('note', Types.String, true)
     @param('showReviewer', Types.Boolean, true)
@@ -553,7 +527,7 @@ class BlogRejectHandler extends BlogHandler {
     }
 }
 
-// 新增：题解列表页面
+// 题解列表页面
 class SolutionHandler extends Handler {
     @param('pid', Types.PositiveInt)
     @param('page', Types.PositiveInt, true)
@@ -564,7 +538,9 @@ class SolutionHandler extends Handler {
         }
         const problem = await ProblemModel.get(domainId, pid);
         if (!problem) throw new ProblemNotFoundError(domainId, pid);
-        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) throw new ProblemNotFoundError(domainId, pid);
+        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) && problem.owner !== this.user._id) {
+            throw new ProblemNotFoundError(domainId, pid);
+        }
         const isAdmin = this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM);
         const ddocs = await (await BlogModel.getSolutions(pid, isAdmin, this.user._id)).toArray();
         // 只保留有权查看的题解
@@ -590,7 +566,7 @@ class SolutionHandler extends Handler {
     }
 }
 
-// 新增：提交题解页面
+// 提交题解页面
 class SolutionEditHandler extends Handler {
     @param('pid', Types.PositiveInt)
     async get({ domainId }, pid: number) {
@@ -600,7 +576,7 @@ class SolutionEditHandler extends Handler {
         }
         const problem = await ProblemModel.get(domainId, pid);
         if (!problem) throw new ProblemNotFoundError(domainId, pid);
-        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
+        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) && problem.owner !== this.user._id) {
             throw new ProblemNotFoundError(domainId, pid);
         }
         this.response.template = 'blog_edit.html';
@@ -620,7 +596,7 @@ class SolutionEditHandler extends Handler {
         }
         const problem = await ProblemModel.get(domainId, pid);
         if (!problem) throw new ProblemNotFoundError(domainId, pid);
-        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
+        if (problem.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) && problem.owner !== this.user._id) {
             throw new ProblemNotFoundError(domainId, pid);
         }
         // 检查题解提交开关
@@ -631,7 +607,7 @@ class SolutionEditHandler extends Handler {
     }
 }
 
-// 新增：题解详情页面（复用 BlogDetailHandler）
+// 题解详情页面（复用 BlogDetailHandler）
 class SolutionDetailHandler extends BlogDetailHandler {
     @param('pid', Types.PositiveInt)
     @param('did', Types.ObjectId)
@@ -645,8 +621,8 @@ class SolutionDetailHandler extends BlogDetailHandler {
             throw new BlogNotFoundError(domainId, did);
         }
         const problem = await ProblemModel.get(domainId, +this.ddoc.solutionFor);
-        // 题目隐藏且没有管理员权限时不能查看
-        if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
+        // 题目隐藏，不是自己的题目，且没有管理员权限时不能查看
+        if (problem?.hidden && !this.user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) && problem?.owner !== this.user._id) {
             throw new BlogNotFoundError(domainId, did);
         }
     }

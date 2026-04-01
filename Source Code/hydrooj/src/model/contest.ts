@@ -648,13 +648,13 @@ const sleepingcupcoder = buildContestRule({
             const vaild = ![STATUS.STATUS_COMPILE_ERROR, STATUS.STATUS_FORMAT_ERROR].includes(j.status);
             if (vaild) ntry[j.pid]++;
             const submitAt = new Date(parseInt(j.rid.toString().slice(0, 8), 16));
-            const penaltyTime = Math.floor((submitAt - tsdoc.startAt / 1000) / 60) - (j.rid.toString() === "6842b936943024732bdf70a4" ? 60 : 0);
+            const penaltyTime = Math.floor((submitAt - tsdoc.startAt / 1000) / 60);
             const ratio = Math.min(Math.max(200, 400 - (ntry[j.pid] - 1) * 10 - penaltyTime), 400);
             const penaltyScore = vaild ? ratio * j.score / 100 : 0;
             if (!detail[j.pid] || detail[j.pid].penaltyScore <= penaltyScore) {
                 detail[j.pid] = {
                     ...j,
-                    penaltyScore,
+                    penaltyScore: penaltyScore + (j.reward || 0),
                     ntry: ntry[j.pid],
                     penaltyTime: Math.max(penaltyTime, 0)
                 };
@@ -702,10 +702,11 @@ const sleepingcupcoder = buildContestRule({
             const tries = tsddict[pid]?.ntry || 0;
             const times = tsddict[pid]?.penaltyTime || 0;
             const timeString = `${Math.floor(times / 600)}${Math.floor(times / 60) % 10}:${Math.floor(times % 60 / 10)}${times % 10}`;
+            const rewardText = (tsddict[pid]?.reward || 0) > 0 ? " $" + `${tsddict[pid]?.reward}` : "";
             row.push({
                 type: 'record',
                 value: ((tsddict[pid]?.penaltyScore || 0) * ((tdoc.score?.[pid] || 100) / 400)).toString(),
-                hover: tsddict[pid]?.status === STATUS.STATUS_ACCEPTED ? `+${tries > 1 ? tries - 1 : ""} (${timeString})` : `-${tries ? tries : ""}`,
+                hover: tsddict[pid]?.status === STATUS.STATUS_ACCEPTED ? `+${tries > 1 ? tries - 1 : ""} (${timeString})` + rewardText : `-${tries ? tries : ""}`,
                 raw: tsddict[pid]?.rid,
                 score: tsddict[pid]?.score,
                 style: tsddict[pid]?.status === STATUS.STATUS_ACCEPTED

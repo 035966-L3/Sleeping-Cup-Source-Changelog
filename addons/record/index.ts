@@ -283,6 +283,7 @@ export class MoreNumberRecordDetailHandler extends ContestDetailBaseHandler {
             const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
             canViewData ||= this.user.own(this.tdoc);
             canViewData ||= global.Hydro.model.contest.isDone(this.tdoc);
+            canViewData ||= global.Hydro.model.contest.canShowRecord.call(this, this.tdoc);
             if (tsdoc) {
                 if (tsdoc.attend) canViewData ||= global.Hydro.model.contest.isDone(this.tdoc, tsdoc);
             }
