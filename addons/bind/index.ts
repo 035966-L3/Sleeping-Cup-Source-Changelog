@@ -2,7 +2,7 @@ import {
     UserModel, DomainModel, SystemModel, ForbiddenError,
     ObjectId, Handler, Context, param, Types
 } from 'hydrooj';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch'; // Warning: extra requirements
 const inc = global.Hydro.model.opcount.inc;
 
 const errorText1 = "Not logged in.";
