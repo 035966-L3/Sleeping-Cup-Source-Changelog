@@ -1,0 +1,31 @@
+<li class="section__tab-item">
+  <h1 class="section__tab-title">{{ _('user_detail.cpoauth_info') }}</h1>
+  <div class="section__tab-main">
+    {% if udoc.rpInfo.cpInfo.bound %}
+    <div id="CP Oauth Information" class="section__body typo richmedia">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:center">{{ _('Platform') }}</th>
+            <th style="text-align:center">{{ _('UID') }}</th>
+            <th style="text-align:center">{{ _('Username') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for info in udoc.rpInfo.cpInfo.cpInfo -%}
+          <tr>
+            <td>{{ info.platform }}</td>
+            <td>{{ info.platformUid }}</td>
+            <td>{{ info.platformUsername }}</td>
+          </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div id="Nothing">
+      {{ nothing.render("CP OAuth not bound.") }}
+    </div>
+    {% endif %}
+  </div>
+</li>
