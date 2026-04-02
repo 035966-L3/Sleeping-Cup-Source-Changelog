@@ -1,6 +1,6 @@
-import { 
-    UserModel, DomainModel, SystemModel, ForbiddenError, ObjectId,
-    Handler, Context, param, Types, randomstring
+import {
+    UserModel, DomainModel, SystemModel, ForbiddenError,
+    ObjectId, Handler, Context, param, Types
 } from 'hydrooj';
 import fetch from 'node-fetch';
 const inc = global.Hydro.model.opcount.inc;
@@ -34,7 +34,7 @@ export class FirstCPOAuthHandler extends Handler {
         const userDoc = await UserModel.getById("system", this.user._id);
         if (userDoc._udoc.bound && !force) throw new ForbiddenError(errorText2);
         
-        await inc('cpoauth', this.user._id.toString(), 86400, 2);
+        await inc('cpoauth', this.user._id.toString(), 86400, 4);
         const state = new ObjectId().toString().repeat(2);
         this.response.redirect = firstOAuthUri + state;
     }
@@ -51,9 +51,8 @@ export class SecondCPOAuthHandler extends Handler {
         if (state.slice(0, 24) !== state.slice(24)) {
             throw new ForbiddenError(errorText3);
         }
-        await inc('cpoauth', this.user._id.toString(), 86400, 2);
+        await inc('cpoauth', this.user._id.toString(), 86400, 4);
         const response = await fetch(secondOAuthUri, {
-            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 grant_type: 'authorization_code',
@@ -61,7 +60,9 @@ export class SecondCPOAuthHandler extends Handler {
                 redirect_uri: redirectUri,
                 client_id: clientId,
                 client_secret: clientSecret,
-            })
+            }),
+            method: 'POST',
+            signal: AbortSignal.timeout(900000),
         })
         const {
             access_token, token_type, expires_in, scope
