@@ -145,7 +145,7 @@ export class SecondCPOAuthHandler extends Handler {
         if (login) {
             if (SystemModel.get('system.contestmode')) {
                 if (!udoc.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
-                    throw new ValidationError(errorText8);
+                    throw new ValidationError(errorText7);
                 }
             }
             await oplog.log(this, 'user.login', { cpoauth: true });
