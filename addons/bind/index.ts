@@ -7,8 +7,6 @@ import fetch from 'node-fetch'; // Warning: extra requirements
 const inc = global.Hydro.model.opcount.inc;
 const oplog = global.Hydro.model.oplog;
 
-const websiteUri = 'https://scg3.piaoztsdy.cn';
-
 const errorText1 = "Not logged in.";
 const errorText2 = "Already logged in.";
 const errorText3 = "Already bound. Set ?force=1 to force update.";
@@ -18,6 +16,7 @@ const errorText6 = "No such user!";
 const errorText7 = "No CP OAuth login cleanup needed!";
 const errorText8 = "CP OAuth login in contest mode is forbidden.";
 
+let websiteUri = '';
 let clientId = '';
 let clientSecret = '';
 let redirectUri = '';
@@ -26,8 +25,9 @@ let secondOAuthUri = '';
 let thirdOAuthUri = '';
 
 async function initializeUri() {
-    clientId = await SystemModel.get('clientId');
-    clientSecret = await SystemModel.get('clientSecret');
+    websiteUri = await SystemModel.get('server.url').slice(0, -1);
+    clientId = await SystemModel.get('cpoauth.clientId');
+    clientSecret = await SystemModel.get('cpoauth.clientSecret');
     redirectUri = `${websiteUri}/cpoauth/second`;
     firstOAuthUri = 'https://auth.luogu.me/oauth/authorize' +
                     `?response_type=code&client_id=${clientId}` +
