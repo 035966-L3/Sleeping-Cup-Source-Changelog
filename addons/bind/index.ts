@@ -1,19 +1,19 @@
 import {
-    UserModel, DomainModel, SystemModel, User, PRIV, PERM,
-    ForbiddenError, BlacklistedError, ObjectId,
-    Handler, Context, param, Types,
+    UserModel, DomainModel, SystemModel, User, PRIV, PERM, CreateError,
+    ForbiddenError, ValidationError, BlacklistedError, UserNotFoundError,
+    ObjectId, Handler, Context, param, Types,
 } from 'hydrooj';
 import fetch from 'node-fetch'; // Warning: extra requirements
 const inc = global.Hydro.model.opcount.inc;
 const oplog = global.Hydro.model.oplog;
 
-const errorText1 = "Not logged in.";
-const errorText2 = "Already logged in.";
-const errorText3 = "Already bound. Set ?force=1 to force update.";
-const errorText4 = "Incorrect parameters.";
-const errorText5 = "Email not match.";
-const errorText6 = "No such user!";
-const errorText7 = "CP OAuth login in contest mode is forbidden.";
+const AlreadyLoggedInError = CreateError('ContestAlreadyAttendedError',
+    ForbiddenError, "You've already logged in.");
+const IncorrectParameterError = CreateError('IncorrectParameterError', 
+    ForbiddenError, "Incorrect parameters: [code: {0}, state: {1}]");
+const CPOAuthDataRequestFailedError = CreateError(
+    'CPOAuthDataRequestFailedError', ForbiddenError,
+    "CP OAuth data request failed: {0}");
 
 let websiteUri = '';
 let clientId = '';
@@ -53,22 +53,13 @@ async function successfulAuth(this: Handler, udoc: User) {
 
 
 export class FirstCPOAuthHandler extends Handler {
-    @param('force', Types.Boolean)
-    @param('login', Types.Boolean)
-    async get(others: any, force = false, login = false) {
-        await oplog.log(this, 'user.cpoauth.first.start', {
-            force: force, login: login
-        });
-        if (!this.user?._id && !login) throw new ForbiddenError(errorText1);
-        if (this.user?._id && login) throw new ForbiddenError(errorText2);
-        const udoc = await UserModel.getById("system", this.user._id);
-        if (udoc._udoc.bound && !force) throw new ForbiddenError(errorText3);
+    async get() {
+        await oplog.log(this, 'user.cpoauth.first.start', {});
+        if (this.user?._id) throw new AlreadyLoggedInError();
         
-        await inc('cpoauth', this.user._id.toString(), 60, 6);
-        const state = login ?
-                      new ObjectId().toString() + new ObjectId().toString() :
-                      new ObjectId().toString().repeat(2);
-        await oplog.log(this, 'user.cpoauth.first.start', { state: state });
+        await this.limitRate('user_login', 60, 30);
+        const state = new ObjectId().toString().repeat(2);
+        await oplog.log(this, 'user.cpoauth.first.end', { state: state });
         this.response.redirect = firstOAuthUri + state;
     }
 }
@@ -80,14 +71,12 @@ export class SecondCPOAuthHandler extends Handler {
         await oplog.log(this, 'user.cpoauth.second.start', { 
             code: code, state: state
         });
-        if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)) {
-            throw new ForbiddenError(errorText4);
-        }
-        const login = state.slice(0, 24) !== state.slice(24);
-        if (!this.user?._id && !login) throw new ForbiddenError(errorText1);
-        if (this.user?._id && login) throw new ForbiddenError(errorText2);
+        if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)
+            || state.slice(0, 24) !== state.slice(24)) {
+                throw new IncorrectParameterError(code, state);
+            }
+        if (this.user?._id) throw new AlreadyLoggedInError();
         
-        await inc('cpoauth', this.user._id.toString(), 60, 6);
         let data = {};
         try {
             const response = await fetch(secondOAuthUri, {
@@ -100,7 +89,7 @@ export class SecondCPOAuthHandler extends Handler {
                     client_secret: clientSecret,
                 }),
                 method: 'POST',
-                signal: AbortSignal.timeout(900000),
+                signal: AbortSignal.timeout(60000),
             })
             const {
                 access_token, token_type, expires_in, scope
@@ -109,28 +98,21 @@ export class SecondCPOAuthHandler extends Handler {
             const userinfo = await fetch(thirdOAuthUri, {
                 headers: { Authorization: `Bearer ${access_token}` },
                 method: 'GET',
-                signal: AbortSignal.timeout(900000),
+                signal: AbortSignal.timeout(60000),
             });
             data = await userinfo.json();
+            if (!data.email) throw "Cannot get user email via given code.";
+            const mailLower = data.email.toLowerCase();
+            const udoc = await UserModel.getByEmail("system", mailLower);
         } catch (error) {
             console.log(error);
-            const prefix = login ? "Bind failed: " : "Login failed: ";
-            throw new ForbiddenError(prefix + error.toString());
+            throw new CPOAuthDataRequestFailedError(error.toString());
         }
         
         const mailLower = data.email.toLowerCase();
-        let uid = this.user._id;
-        let udoc = {};
-        if (!login) {
-            udoc = await UserModel.getById("system", this.user._id);
-            if (udoc._udoc.mailLower != mailLower) {
-                throw new ForbiddenError(errorText5);
-            }
-        } else {
-            udoc = await UserModel.getByEmail("system", mailLower);
-            if (!udoc) throw new ForbiddenError(errorText6);
-            uid = udoc._id;
-        }
+        const udoc = await UserModel.getByEmail("system", mailLower);
+        if (!udoc) throw new UserNotFoundError(mailLower);
+        const uid = udoc._id;
         
         await UserModel.setById(uid, {
             bound: true,
@@ -142,21 +124,19 @@ export class SecondCPOAuthHandler extends Handler {
         });
         await oplog.log(this, 'user.cpoauth.second.end', { data: data });
         
-        if (login) {
-            if (SystemModel.get('system.contestmode')) {
-                if (!udoc.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
-                    throw new ValidationError(errorText7);
-                }
-            }
-            await oplog.log(this, 'user.login', { cpoauth: true });
-            if (!udoc.hasPriv(PRIV.PRIV_USER_PROFILE)) {
-                throw new BlacklistedError(
-                    udoc.uname, udoc.banReason
-                );
-            }
-            await successfulAuth.call(this, udoc);
-            this.session.save = false;
+        await this.limitRate('user_login_id', 60, 5, udoc.uname);
+        if (SystemModel.get('system.contestmode')) {
+            if (!udoc.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) throw new ValidationError(
+                "CP OAuth login in contest mode is forbidden.");
         }
+        await oplog.log(this, 'user.login', { cpoauth: true });
+        if (!udoc.hasPriv(PRIV.PRIV_USER_PROFILE)) {
+            throw new BlacklistedError(
+                udoc.uname, udoc.banReason
+            );
+        }
+        await successfulAuth.call(this, udoc);
+        this.session.save = false;
         this.response.redirect = '/';
     }
 }
