@@ -102,8 +102,6 @@ export class SecondCPOAuthHandler extends Handler {
             });
             data = await userinfo.json();
             if (!data.email) throw "Cannot get user email via given code.";
-            const mailLower = data.email.toLowerCase();
-            const udoc = await UserModel.getByEmail("system", mailLower);
         } catch (error) {
             console.log(error);
             throw new CPOAuthDataRequestFailedError(error.toString());
