@@ -71,9 +71,7 @@ export class FirstCPOAuthHandler extends Handler {
         const timestamp = new Date().getTime().toString().padStart(13, '0');
         await DocumentModel.add("system", timestamp, 1,
             TYPE_CP_OAUTH_STATE_CACHE, state);
-        await oplog.log(this, 'user.cpoauth.first.end', { 
-            state: state, timestamp: timestamp
-        });
+        await oplog.log(this, 'user.cpoauth.first.end', { state: state });
         this.response.redirect = firstOAuthUri + state;
     }
 }
@@ -84,9 +82,7 @@ export class SecondCPOAuthHandler extends Handler {
     async get(others: any, code: string, state: string) {
         const timestamp = new Date().getTime().toString().padStart(13, '0');
         const now = parseInt(timestamp, 10);
-        await oplog.log(this, 'user.cpoauth.second.start', { 
-            timestamp: timestamp
-        });
+        await oplog.log(this, 'user.cpoauth.second.start', {});
         if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)) {
             throw new IncorrectParameterError(code, state);
         }
