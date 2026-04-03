@@ -25,7 +25,7 @@ let secondOAuthUri = '';
 let thirdOAuthUri = '';
 
 async function initializeUri() {
-    websiteUri = await SystemModel.get('server.url').slice(0, -1);
+    websiteUri = (await SystemModel.get('server.url')).slice(0, -1);
     clientId = await SystemModel.get('cpoauth.clientid');
     clientSecret = await SystemModel.get('cpoauth.clientsecret');
     redirectUri = `${websiteUri}/cpoauth/second`;
@@ -83,10 +83,10 @@ export class SecondCPOAuthHandler extends Handler {
         const timestamp = new Date().getTime().toString().padStart(13, '0');
         const now = parseInt(timestamp, 10);
         await oplog.log(this, 'user.cpoauth.second.start', {});
+        if (this.user?._id) throw new AlreadyLoggedInError();
         if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)) {
             throw new IncorrectParameterError(code, state);
         }
-        if (this.user?._id) throw new AlreadyLoggedInError();
         const stateDoc = await DocumentModel.get("system",
             TYPE_CP_OAUTH_STATE_CACHE, state);
         if (!stateDoc || now - parseInt(stateDoc.content, 10) > 60000) {
@@ -159,7 +159,7 @@ export class SecondCPOAuthHandler extends Handler {
 
 
 export async function apply(ctx: Context) {
-    initializeUri();
+    await initializeUri();
     ctx.Route('first_cpoauth', '/cpoauth/first', FirstCPOAuthHandler);
     ctx.Route('second_cpoauth', '/cpoauth/second', SecondCPOAuthHandler);
 }
