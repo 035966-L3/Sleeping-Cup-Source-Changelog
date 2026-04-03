@@ -1,7 +1,7 @@
 import {
     UserModel, DomainModel, SystemModel, User, PRIV, PERM,
-    ForbiddenError, BlacklistedError, ObjectId, Handler, Context, 
-    param, Types, randomstring,
+    ForbiddenError, BlacklistedError, ObjectId,
+    Handler, Context, param, Types,
 } from 'hydrooj';
 import fetch from 'node-fetch'; // Warning: extra requirements
 const inc = global.Hydro.model.opcount.inc;
@@ -13,8 +13,7 @@ const errorText3 = "Already bound. Set ?force=1 to force update.";
 const errorText4 = "Incorrect parameters.";
 const errorText5 = "Email not match.";
 const errorText6 = "No such user!";
-const errorText7 = "No CP OAuth login cleanup needed!";
-const errorText8 = "CP OAuth login in contest mode is forbidden.";
+const errorText7 = "CP OAuth login in contest mode is forbidden.";
 
 let websiteUri = '';
 let clientId = '';
