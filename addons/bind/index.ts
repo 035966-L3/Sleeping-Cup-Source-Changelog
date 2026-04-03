@@ -123,7 +123,7 @@ export class SecondCPOAuthHandler extends Handler {
         let udoc = {};
         if (!login) {
             udoc = await UserModel.getById("system", this.user._id);
-            if (udoc.mailLower != mailLower) {
+            if (udoc._udoc.mailLower != mailLower) {
                 throw new ForbiddenError(errorText5);
             }
         } else {
