@@ -1,11 +1,12 @@
 import {
-    UserModel, DomainModel, SystemModel, User, PRIV, PERM, CreateError,
+    UserModel, DomainModel, DocumentModel, SystemModel, User, PRIV, PERM,
     ForbiddenError, ValidationError, BlacklistedError, UserNotFoundError,
-    ObjectId, Handler, Context, param, Types,
+    CreateError, ObjectId, Handler, Context, param, Types, randomstring,
 } from 'hydrooj';
 import fetch from 'node-fetch'; // Warning: extra requirements
 const inc = global.Hydro.model.opcount.inc;
 const oplog = global.Hydro.model.oplog;
+const TYPE_CP_OAUTH_STATE_CACHE = 234565432;
 
 const AlreadyLoggedInError = CreateError('ContestAlreadyAttendedError',
     ForbiddenError, "You've already logged in.");
@@ -58,8 +59,21 @@ export class FirstCPOAuthHandler extends Handler {
         if (this.user?._id) throw new AlreadyLoggedInError();
         
         await this.limitRate('user_login', 60, 30);
-        const state = new ObjectId().toString().repeat(2);
-        await oplog.log(this, 'user.cpoauth.first.end', { state: state });
+        let state = '';
+        while (state.length < 48) {
+            const randomCharacter = randomstring(1);
+            if (/[0-9a-f]/.test(randomCharacter)) state += randomCharacter;
+        }
+        await DocumentModel.deleteMulti("system", TYPE_CP_OAUTH_STATE_CACHE, {
+            content: { 
+                $lt: (new Date().getTime() - 66666).toString().padStart(13, '0')
+        }});
+        const timestamp = new Date().getTime().toString().padStart(13, '0');
+        await DocumentModel.add("system", timestamp, 1,
+            TYPE_CP_OAUTH_STATE_CACHE, state);
+        await oplog.log(this, 'user.cpoauth.first.end', { 
+            state: state, timestamp: timestamp
+        });
         this.response.redirect = firstOAuthUri + state;
     }
 }
@@ -68,14 +82,22 @@ export class SecondCPOAuthHandler extends Handler {
     @param('code', Types.String)
     @param('state', Types.String)
     async get(others: any, code: string, state: string) {
+        const timestamp = new Date().getTime().toString().padStart(13, '0');
+        const now = parseInt(timestamp, 10);
         await oplog.log(this, 'user.cpoauth.second.start', { 
-            code: code, state: state
+            timestamp: timestamp
         });
-        if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)
-            || state.slice(0, 24) !== state.slice(24)) {
-                throw new IncorrectParameterError(code, state);
-            }
+        if (!/[0-9a-f]{64}/.test(code) || !/[0-9a-f]{48}/.test(state)) {
+            throw new IncorrectParameterError(code, state);
+        }
         if (this.user?._id) throw new AlreadyLoggedInError();
+        const stateDoc = await DocumentModel.get("system",
+            TYPE_CP_OAUTH_STATE_CACHE, state);
+        if (!stateDoc || now - parseInt(stateDoc.content, 10) > 60000) {
+            throw new IncorrectParameterError(code, state);
+        }
+        await DocumentModel.deleteOne("system",
+            TYPE_CP_OAUTH_STATE_CACHE, state);
         
         let data = {};
         try {
