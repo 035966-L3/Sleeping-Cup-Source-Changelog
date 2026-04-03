@@ -26,8 +26,8 @@ let thirdOAuthUri = '';
 
 async function initializeUri() {
     websiteUri = await SystemModel.get('server.url').slice(0, -1);
-    clientId = await SystemModel.get('cpoauth.clientId');
-    clientSecret = await SystemModel.get('cpoauth.clientSecret');
+    clientId = await SystemModel.get('cpoauth.clientid');
+    clientSecret = await SystemModel.get('cpoauth.clientsecret');
     redirectUri = `${websiteUri}/cpoauth/second`;
     firstOAuthUri = 'https://auth.luogu.me/oauth/authorize' +
                     `?response_type=code&client_id=${clientId}` +
@@ -62,8 +62,8 @@ export class FirstCPOAuthHandler extends Handler {
         });
         if (!this.user?._id && !login) throw new ForbiddenError(errorText1);
         if (this.user?._id && login) throw new ForbiddenError(errorText2);
-        const userDoc = await UserModel.getById("system", this.user._id);
-        if (userDoc._udoc.bound && !force) throw new ForbiddenError(errorText3);
+        const udoc = await UserModel.getById("system", this.user._id);
+        if (udoc._udoc.bound && !force) throw new ForbiddenError(errorText3);
         
         await inc('cpoauth', this.user._id.toString(), 60, 6);
         const state = login ?
@@ -121,16 +121,16 @@ export class SecondCPOAuthHandler extends Handler {
         
         const mailLower = data.email.toLowerCase();
         let uid = this.user._id;
-        let userDoc = {};
+        let udoc = {};
         if (!login) {
-            userDoc = await UserModel.getById("system", this.user._id);
-            if (userDoc._udoc.mailLower != mailLower) {
+            udoc = await UserModel.getById("system", this.user._id);
+            if (udoc.mailLower != mailLower) {
                 throw new ForbiddenError(errorText5);
             }
         } else {
-            userDoc = await UserModel.getByEmail("system", mailLower);
-            if (!userDoc) throw new ForbiddenError(errorText6);
-            uid = userDoc._udoc._id;
+            udoc = await UserModel.getByEmail("system", mailLower);
+            if (!udoc) throw new ForbiddenError(errorText6);
+            uid = udoc._id;
         }
         
         await UserModel.setById(uid, {
@@ -144,57 +144,20 @@ export class SecondCPOAuthHandler extends Handler {
         await oplog.log(this, 'user.cpoauth.second.end', { data: data });
         
         if (login) {
-            const randomPassword = randomstring(64);
-            await UserModel.setById(uid, {
-                cpoauthLoginCleanupNeeded: true,
-                backup_hash: userDoc._udoc.hash,
-                backup_salt: userDoc._udoc.salt,
-                backup_hashType: userDoc._udoc.hashType,
-            });
-            await UserModel.setPassword(uid, randomPassword);
-            const uname = userDoc._udoc.uname;
-            const password = randomPassword;
-            let udoc = await UserModel.getByUname("system", uname);
             if (SystemModel.get('system.contestmode')) {
                 if (!udoc.hasPriv(PRIV.PRIV_EDIT_SYSTEM)) {
                     throw new ValidationError(errorText8);
                 }
             }
-            await oplog.log(this, 'user.login', { redirect: '/cpoauth/third' });
-            await udoc.checkPassword(password);
+            await oplog.log(this, 'user.login', { cpoauth: true });
             if (!udoc.hasPriv(PRIV.PRIV_USER_PROFILE)) {
-                throw new BlacklistedError(uname, udoc.banReason);
+                throw new BlacklistedError(
+                    udoc.uname, udoc.banReason
+                );
             }
             await successfulAuth.call(this, udoc);
             this.session.save = false;
-            this.response.redirect = '/cpoauth/third';
         }
-        else this.response.redirect = '/';
-    }
-}
-
-export class ThirdCPOAuthHandler extends Handler {
-    async get(others: any) {
-        await oplog.log(this, 'user.cpoauth.third.start', {});
-        if (!this.user?._id) throw new ForbiddenError(errorText1);
-        const userDoc = await UserModel.getById("system", this.user._id);
-        if (!userDoc._udoc.cpoauthLoginCleanupNeeded) {
-            throw new ForbiddenError(errorText7);
-        }
-        
-        await inc('cpoauth', this.user._id.toString(), 60, 6);
-        await UserModel.setById(this.user._id, {
-            hash: userDoc._udoc.backup_hash,
-            salt: userDoc._udoc.backup_salt,
-            hashType: userDoc._udoc.backup_hashType,
-        });
-        await UserModel.setById(this.user._id, {}, {
-            cpoauthLoginCleanupNeeded: true,
-            backup_hash: userDoc._udoc.hash,
-            backup_salt: userDoc._udoc.salt,
-            backup_hashType: userDoc._udoc.hashType,
-        });
-        await oplog.log(this, 'user.cpoauth.third.end', {});
         this.response.redirect = '/';
     }
 }
@@ -204,5 +167,4 @@ export async function apply(ctx: Context) {
     initializeUri();
     ctx.Route('first_cpoauth', '/cpoauth/first', FirstCPOAuthHandler);
     ctx.Route('second_cpoauth', '/cpoauth/second', SecondCPOAuthHandler);
-    ctx.Route('third_cpoauth', '/cpoauth/third', ThirdCPOAuthHandler);
 }
