@@ -29,12 +29,12 @@ async function initializeUri() {
     clientId = await SystemModel.get('cpoauth.clientid');
     clientSecret = await SystemModel.get('cpoauth.clientsecret');
     redirectUri = `${websiteUri}/cpoauth/second`;
-    firstOAuthUri = 'https://auth.luogu.me/oauth/authorize' +
+    firstOAuthUri = 'https://www.cpoauth.com/oauth/authorize' +
                     `?response_type=code&client_id=${clientId}` +
                     `&redirect_uri=${redirectUri}` +
                     `&scope=email+cp:linked&state=`;
-    secondOAuthUri = 'https://auth.luogu.me/api/oauth/token';
-    thirdOAuthUri = 'https://auth.luogu.me/api/oauth/userinfo';
+    secondOAuthUri = 'https://www.cpoauth.com/api/oauth/token';
+    thirdOAuthUri = 'https://www.cpoauth.com/api/oauth/userinfo';
 }
 
 async function successfulAuth(this: Handler, udoc: User) {
