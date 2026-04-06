@@ -19,41 +19,41 @@
 }
 
 .page--record_detail .subtask.pass {
-    background-color: #cfffcf !important;
-    border-left: .1875rem solid #cfffcf !important;
+    background-color: #cfc !important;
+    border-left: .1875rem solid #cfc !important;
 }
 
 .page--record_detail .subtask.fail {
-    background-color: #ffcfcf !important;
-    border-left: .1875rem solid #ffcfcf !important;
+    background-color: #fcc !important;
+    border-left: .1875rem solid #fcc !important;
 }
 
 .page--record_detail .subtask.partial {
-    background-color: #cfffff !important;
-    border-left: .1875rem solid #cfffff !important;
+    background-color: #cff !important;
+    border-left: .1875rem solid #cff !important;
 }
 
 .page--record_detail .subtask.ignored {
-    background-color: #cfcfcf !important;
-    border-left: .1875rem solid #cfcfcf !important;
+    background-color: #ccc !important;
+    border-left: .1875rem solid #ccc !important;
 }
 
 .theme--dark.page--record_detail .subtask.pass {
-    background-color: #006000 !important;
-    border-left: .1875rem solid #006000 !important;
+    background-color: #060 !important;
+    border-left: .1875rem solid #060 !important;
 }
 
 .theme--dark.page--record_detail .subtask.fail {
-    background-color: #600000 !important;
-    border-left: .1875rem solid #600000 !important;
+    background-color: #600 !important;
+    border-left: .1875rem solid #600 !important;
 }
 
 .theme--dark.page--record_detail .subtask.partial {
-    background-color: #006060 !important;
-    border-left: .1875rem solid #006060 !important;
+    background-color: #066 !important;
+    border-left: .1875rem solid #066 !important;
 }
 
 .theme--dark.page--record_detail .subtask.ignored {
-    background-color: #606060 !important;
-    border-left: .1875rem solid #606060 !important;
+    background-color: #666 !important;
+    border-left: .1875rem solid #666 !important;
 }
