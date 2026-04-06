@@ -19,6 +19,7 @@ export function parse(output: string, fullscore: number, detail: DetailType) {
         status = STATUS.STATUS_PARTIAL;
         score = fullscore * p;
         if (p >= 1) status = STATUS.STATUS_ACCEPTED;
+        if (p <= 0) status = STATUS.STATUS_WRONG_ANSWER;
         const res = message.split(')');
         res.shift();
         message = res.join(')').trim();
@@ -28,6 +29,7 @@ export function parse(output: string, fullscore: number, detail: DetailType) {
         status = STATUS.STATUS_PARTIAL;
         score = fullscore * p;
         if (p >= 1) status = STATUS.STATUS_ACCEPTED;
+        if (p <= 0) status = STATUS.STATUS_WRONG_ANSWER;
     }
     while (operation.test(message)) {
         const [, op, val, rest] = message.match(operation);

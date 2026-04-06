@@ -34,14 +34,17 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
                 : 0,
         };
         const cases = [];
+        let thatId = ctx.thisId;
         for (const cid in subtask.cases) {
+            thatId += 1;
+            let currentId = thatId;
             const runner = judgeCase(subtask.cases[cid]);
             cases.push(ctx.queue.add(async () => {
                 const res = (ctx.errored
                     || (subtask.type === 'min' && ctxSubtask.score === 0)
                     || (subtask.if || []).filter((i) => ctx.failed[i]).length)
                     ? {
-                        id: subtask.cases[cid].id,
+                        id: currentId,
                         status: STATUS.STATUS_CANCELED,
                         subtaskId: subtask.id,
                         score: 0,
@@ -115,10 +118,12 @@ export const runFlow = async (ctx: Context, task: Task) => {
         }
     } else {
         const infos = {};
-        await Promise.all(Object.entries(ctx.config.subtasks).map(async ([key, value]) => {
+        ctx.thisId = 0;
+        for (const [key, value] of Object.entries(ctx.config.subtasks)) {
             const sid = value.id?.toString() || key;
             infos[sid] = await judgeSubtask(value, sid, task.judgeCase)(ctx);
-        }));
+            ctx.thisId += value.cases.length || 0;
+        }
         for (const [key, value] of Object.entries(ctx.config.subtasks)) {
             let effective = true;
             const sid = value.id?.toString() || key;

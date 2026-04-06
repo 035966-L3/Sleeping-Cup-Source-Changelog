@@ -76,7 +76,7 @@ function judgeCase(c: NormalizedCase) {
             await ctx.runAnalysis(ctx.execute, { src: c.input });
         }
         return {
-            id: c.id,
+            id: ctx.thisId + c.id,
             subtaskId: ctxSubtask.subtask.id,
             inData,
             outData,

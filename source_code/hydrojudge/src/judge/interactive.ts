@@ -66,7 +66,7 @@ function judgeCase(c: NormalizedCase) {
             if (resInteractor.code && !(resInteractor.stderr || '').trim().length) message += ` (Interactor exited with code ${resInteractor.code})`;
         }
         return {
-            id: c.id,
+            id: ctx.thisId + c.id,
             subtaskId: ctxSubtask.subtask.id,
             inData,
             outData,

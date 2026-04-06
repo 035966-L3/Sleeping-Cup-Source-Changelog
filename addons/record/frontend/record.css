@@ -17,3 +17,43 @@
 .record-status--icon.partial:before {
     content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cpath d='m200 666 600 0 0 111-600 0 0-111z' fill='%230cc'/%3E%3C/svg%3E");
 }
+
+.page--record_detail .subtask.pass {
+    background-color: #cfffcf !important;
+    border-left: .1875rem solid #cfffcf !important;
+}
+
+.page--record_detail .subtask.fail {
+    background-color: #ffcfcf !important;
+    border-left: .1875rem solid #ffcfcf !important;
+}
+
+.page--record_detail .subtask.partial {
+    background-color: #cfffff !important;
+    border-left: .1875rem solid #cfffff !important;
+}
+
+.page--record_detail .subtask.ignored {
+    background-color: #cfcfcf !important;
+    border-left: .1875rem solid #cfcfcf !important;
+}
+
+.theme--dark.page--record_detail .subtask.pass {
+    background-color: #006000 !important;
+    border-left: .1875rem solid #006000 !important;
+}
+
+.theme--dark.page--record_detail .subtask.fail {
+    background-color: #600000 !important;
+    border-left: .1875rem solid #600000 !important;
+}
+
+.theme--dark.page--record_detail .subtask.partial {
+    background-color: #006060 !important;
+    border-left: .1875rem solid #006060 !important;
+}
+
+.theme--dark.page--record_detail .subtask.ignored {
+    background-color: #606060 !important;
+    border-left: .1875rem solid #606060 !important;
+}
