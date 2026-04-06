@@ -39,8 +39,8 @@
 }
 
 .theme--dark.page--record_detail .subtask.pass {
-    background-color: #060 !important;
-    border-left: .1875rem solid #060 !important;
+    background-color: #040 !important;
+    border-left: .1875rem solid #040 !important;
 }
 
 .theme--dark.page--record_detail .subtask.fail {
@@ -49,8 +49,8 @@
 }
 
 .theme--dark.page--record_detail .subtask.partial {
-    background-color: #066 !important;
-    border-left: .1875rem solid #066 !important;
+    background-color: #055 !important;
+    border-left: .1875rem solid #055 !important;
 }
 
 .theme--dark.page--record_detail .subtask.ignored {
