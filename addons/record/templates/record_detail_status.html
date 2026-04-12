@@ -48,7 +48,7 @@
         </tr>
       </thead>
       <tbody>
-        {% set _key = 'id' if rdoc.testCases|groupby('subtaskId')|length == 1 and rdoc.subtasks[Object.keys(rdoc.subtasks)[0]].type == 'sum' else 'subtaskId' %}
+        {% set _key = 'id' if rdoc.testCases|groupby('subtaskId')|length == 1 and rdoc.subtasks and rdoc.subtasks[Object.keys(rdoc.subtasks)[0]].type == 'sum' else 'subtaskId' %}
         {%- for subtaskId, rcdocs in rdoc.testCases|sort(false,false,_key)|groupby(_key) -%}
         {% if _key == 'subtaskId' or subtaskId == 1 %}
         <tr class="subtask {% if not rdoc.progress %}{{ model.builtin.STATUS_CODES[rdoc.subtasks[subtaskId]['status']]|default('ignored') }}{% endif %}">
