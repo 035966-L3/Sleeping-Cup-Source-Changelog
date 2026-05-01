@@ -66,8 +66,8 @@ export async function judge({
             if (stdAns instanceof Array) {
                 const stdSet = new Set(stdAns);
                 const ans = new Set(answers[key] instanceof Array ? answers[key] : [answers[key]]);
-                if (stdAns.length === ans.size && Set.isSuperset(stdSet, ans)) report(STATUS.STATUS_ACCEPTED, fullScore, '');
-                else if (ans.size && Set.isSuperset(stdSet, ans)) report(STATUS.STATUS_PARTIAL, fullScore * ans.size / stdSet.size, '');
+                if (stdAns.length === ans.size && stdSet.isSupersetOf(ans)) report(STATUS.STATUS_ACCEPTED, fullScore, '');
+                else if (ans.size && stdSet.isSupersetOf(ans)) report(STATUS.STATUS_PARTIAL, fullScore * ans.size / stdSet.size, '');
                 else report(STATUS.STATUS_WRONG_ANSWER, 0, '');
             } else if (stdAns.toString() === usrAns) report(STATUS.STATUS_ACCEPTED, fullScore, '');
             else report(STATUS.STATUS_WRONG_ANSWER, 0, '');

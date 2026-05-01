@@ -46,12 +46,10 @@ async function successfulAuth(this: Handler, udoc: User) {
 
 class UserLoginHandler extends Handler {
     noCheckPermView = true;
-    async prepare() {
-        if (!system.get('server.login')) throw new BuiltinLoginError();
-    }
 
     async get() {
         this.response.template = 'user_login.html';
+        this.response.body.loginMethods = this.loginMethods;
     }
 
     @param('uname', Types.Username)
@@ -64,6 +62,7 @@ class UserLoginHandler extends Handler {
         domainId: string, uname: string, password: string, rememberme = false, redirect = '',
         tfa = '', authnChallenge = '',
     ) {
+        if (!system.get('server.login')) throw new BuiltinLoginError();
         let udoc = await user.getByEmail(domainId, uname);
         udoc ||= await user.getByUname(domainId, uname);
         if (!udoc) throw new UserNotFoundError(uname);
@@ -483,31 +482,31 @@ class OauthCallbackHandler extends Handler {
         if (!provider) throw new UserFacingError('Oauth type');
         await this.limitRate('oauth_callback', 60, 5);
         const r = await provider.callback.call(this, args);
+        const ids = Array.isArray(r._id) ? r._id : [r._id];
+        const existing = await Promise.all(ids.map((id) => this.ctx.oauth.get(args.type, id)));
         if (this.session.oauthBind === args.type) {
             delete this.session.oauthBind;
-            const existing = await this.ctx.oauth.get(args.type, r._id);
-            if (existing && existing !== this.user._id) {
-                throw new BadRequestError('Already binded to another account');
+            if (existing.some((id) => id && id !== this.user._id)) {
+                throw new BadRequestError('Already bound to another account');
             }
             this.response.redirect = '/home/security';
-            if (existing !== this.user._id) await this.ctx.oauth.set(args.type, r._id, this.user._id);
+            await Promise.all(ids.map((i) => this.ctx.oauth.set(args.type, i, this.user._id)));
             return;
         }
-
-        const uid = await this.ctx.oauth.get(args.type, r._id);
-        if (uid) {
-            await successfulAuth.call(this, await user.getById('system', uid));
+        const effective = existing.find((i) => i);
+        if (effective) {
+            await successfulAuth.call(this, await user.getById('system', effective));
             this.response.redirect = '/';
             return;
         }
         const udoc = await user.getByEmail('system', r.email);
         if (udoc) {
-            await this.ctx.oauth.set(args.type, r._id, udoc._id);
+            await Promise.all(ids.map((i) => this.ctx.oauth.set(args.type, i, udoc._id)));
             await successfulAuth.call(this, udoc);
             this.response.redirect = '/';
             return;
         }
-        if (!provider.canRegister) throw new ForbiddenError('No binded account found');
+        if (!provider.canRegister) throw new ForbiddenError('No bound accounts found');
         this.checkPriv(PRIV.PRIV_REGISTER_USER);
         let username = '';
         r.uname ||= [];
