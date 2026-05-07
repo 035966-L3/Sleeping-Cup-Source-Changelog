@@ -18,14 +18,20 @@
               <col class="col--rank">
               <col class="col--user">
               <col class="col--rp">
-              <col class="col--bio">
+              <col class="col--rp">
+              <col class="col--rp">
+              <col class="col--rp">
+              <col class="col--rp">
             </colgroup>
             <thead>
               <tr>
                 <th class="col--rank">{{ _('Rank') }}</th>
                 <th class="col--user">{{ _('Username') }}</th>
                 <th class="col--rp">{{ _('Rating') }}</th>
-                <th class="col--bio">{{ _('Bio') }}</th>
+                <th class="col--rp">{{ _('Quality') }}</th>
+                <th class="col--rp">{{ _('Max Rating') }}</th>
+                <th class="col--rp">{{ _('Contests') }}</th>
+                <th class="col--rp">{{ _('Updated At') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -33,16 +39,22 @@
               <tr>
                 <td class="col--rank">{{ handler.user.rank|default('-') }}</td>
                 <td class="col--user">{{ user.render_inline(handler.user) }}</td>
-                <td class="col--rp">{{ handler.user.rp|default(0)|round(0) }}</td>
-                <td class="col--bio">{{ handler.user.bio|default('')|truncate(128, true)|markdownInline|safe }}</td>
+                <td class="col--rp">{{ handler.user.rp|default(0) }}</td>
+                <td class="col--rp">{{ handler.user.rpInfo.quality|default(0) }}</td>
+                <td class="col--rp">{{ handler.user.rpInfo.maxRp|default(0) }}</td>
+                <td class="col--rp">{{ handler.user.rpInfo.participation|default(0) }}</td>
+                <td class="col--rp">{{ '#' if handler.user.rpInfo.lastParticipation else '' }}{{ handler.user.rpInfo.lastParticipation|default('-') }}</td>
               </tr>
               {% endif %}
               {%- for udoc in udocs -%}
               <tr>
                 <td class="col--rank">{{ udoc.rank|default('-') }}</td>
                 <td class="col--user">{{ user.render_inline(udoc) }}</td>
-                <td class="col--rp">{{ udoc.rp|default(0)|round(0) }}</td>
-                <td class="col--bio">{{ udoc.bio|default('')|truncate(128, true)|markdownInline|safe }}</td>
+                <td class="col--rp">{{ udoc.rp|default(0) }}</td>
+                <td class="col--rp">{{ udoc.rpInfo.quality|default(0) }}</td>
+                <td class="col--rp">{{ udoc.rpInfo.maxRp|default(0) }}</td>
+                <td class="col--rp">{{ udoc.rpInfo.participation|default(0) }}</td>
+                <td class="col--rp">{{ '#' if udoc.rpInfo.lastParticipation else '' }}{{ udoc.rpInfo.lastParticipation|default('-') }}</td>
               </tr>
               {%- endfor -%}
             </tbody>

@@ -77,3 +77,7 @@ a.user-profile-name.uname--lv0 {
 html.theme--dark a.user-profile-name.uname--lv0 {
     color: #ffffff !important;
 }
+
+.col--rp {
+    width: 5rem !important;
+}
