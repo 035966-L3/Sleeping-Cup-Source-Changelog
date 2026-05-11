@@ -38,6 +38,8 @@
                   {{ ddoc['title'] }}
                 </a>
               </h1>
+              {% set lines = ddoc['content'].replace('\r\n', '\n').split('\n') %}
+              <pre class="judge-text">{{ lines[0] }}</pre>
               <ul class="supplementary list">
                 <li>{{ _('{0} views').format(ddoc.views) }}</li>
                 <li>{{ datetimeSpan(ddoc.updateAt)|safe }}</li>
