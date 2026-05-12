@@ -3,7 +3,7 @@
   <div class="section__header">
     <h1 class="section__title">{{ _('Ranking') }}</h1>
   </div>
-  <div class="section__body no-padding">
+  <div class="section__body no-padding" style="overflow: hidden">
     <div>
       <table class="data-table">
         <colgroup>
@@ -42,11 +42,9 @@
         </tbody>
       </table>
     </div>
-  </div>
-  <ul class="pager pager-bottom">
-    <li>
+    <ul class="pager pager-bottom"><li>
       <a class="pager__item next link" href="{{ url('ranking') }}">{{ _('More') }} ></a>
-    </li>
-  </ul>
+    </li></ul>
+  </div>
 </div>
 {% endif %}
