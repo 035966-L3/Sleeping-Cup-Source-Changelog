@@ -1,7 +1,7 @@
 {
     "name": "bind",
     "version": "0.0.0",
-    "description": "CPOAuth Bind",
+    "description": "CP OAuth Bind",
     "author": "Sleeping Cup",
     "license": "GPL-3.0-or-later"
 }
