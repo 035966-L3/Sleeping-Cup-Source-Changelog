@@ -1,4 +1,5 @@
 import { NormalizedCase, STATUS } from '@hydrooj/common';
+import fileload from '../fileload';
 import checkers from '../checkers';
 import { runFlow } from '../flow';
 import { runQueued } from '../sandbox';
