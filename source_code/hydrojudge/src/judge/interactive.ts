@@ -4,10 +4,11 @@ import { runPiped } from '../sandbox';
 import fileload from '../fileload';
 import signals from '../signals';
 import { parse } from '../testlib';
-import { Context, ContextSubTask } from './interface';
+import { Context, ContextSubTask, MultiPassContext } from './interface';
 
 function judgeCase(c: NormalizedCase) {
-    return async (ctx: Context, ctxSubtask: ContextSubTask) => {
+    const mp: MultiPassContext = { i: 0 };
+    return async (ctx: Context, ctxSubtask: ContextSubTask, runner?: Function) => {
         let { inData, ansData, outData, errData } = {
             inData: await fileload({ src: c.input }),
             ansData: await fileload({ src: c.output }),
@@ -15,12 +16,14 @@ function judgeCase(c: NormalizedCase) {
             errData: ""
         };
         const { address_space_limit, process_limit } = ctx.session.getLang(ctx.lang);
+        if (ctx.config.multi_pass && !mp.i) mp.i = 1;
+
         const [{
-            code, signalled, time, memory, fileIds,
+            code, signalled, time, memory,
         }, resInteractor] = await runPiped([
             {
                 execute: ctx.executeUser.execute,
-                copyIn: ctx.executeUser.copyIn,
+                copyIn: { ...ctx.executeUser.copyIn, ...mp.state },
                 time: c.time,
                 memory: c.memory,
                 addressSpaceLimit: address_space_limit,
@@ -29,23 +32,29 @@ function judgeCase(c: NormalizedCase) {
             {
                 execute: `${ctx.executeInteractor.execute} /w/in /w/tout /w/out`,
                 copyIn: {
-                    in: c.input ? { src: c.input } : { content: '' },
+                    in: mp.input ?? { src: c.input },
                     out: c.output ? { src: c.output } : { content: '' },
                     ...ctx.executeInteractor.copyIn,
+                    ...mp.state ?? {},
                 },
                 time: c.time * 2,
                 memory: c.memory * 2,
                 copyOut: ['/w/tout?'],
-                env: { ...ctx.env, HYDRO_TESTCASE: c.id.toString() },
+                copyOutCached: ['nextpass.in?', 'state.txt?'],
+                env: {
+                    ...ctx.env,
+                    HYDRO_TESTCASE: c.id.toString(),
+                    ...(mp.i ? { HYDRO_MULTI_PASS: mp.i.toString() } : {}),
+                },
             },
         ], [
             { in: { index: 0, fd: 1 }, out: { index: 1, fd: 0 }, name: 'userToInteractor' },
             { in: { index: 1, fd: 1 }, out: { index: 0, fd: 0 }, name: 'interactorToUser' },
-        ]);
+        ], undefined, `judgeCase[${c.id}]${mp.i ? `[pass=${mp.i}]` : ''}<${ctx.rid}>`);
         // TODO handle tout (maybe pass to checker?)
         let status: number;
         let score = 0;
-        let message: any = '';
+        let message: any = mp.i ? `[Pass ${mp.i}] ` : '';
         if (time > c.time) {
             status = STATUS.STATUS_TIME_LIMIT_EXCEEDED;
         } else if (memory > c.memory * 1024) {
@@ -53,7 +62,7 @@ function judgeCase(c: NormalizedCase) {
         } else if (ctx.config.detail === 'full' && ((code && code !== 13/* Broken Pipe */) || (code === 13 && !resInteractor.code))) {
             status = STATUS.STATUS_RUNTIME_ERROR;
             if (code < 32 && signalled) message = signals[code];
-            else message = { message: 'Your program returned {0}.', params: [code] };
+            else message = { message: `${message}Your program returned {0}.`, params: [code] };
         } else {
             ({ outData, errData } = {
                 outData: await fileload( fileIds.stdout ? { fileId: fileIds.stdout } : { content: '' } ),
@@ -62,8 +71,21 @@ function judgeCase(c: NormalizedCase) {
             const result = parse(resInteractor.stderr, c.score, ctx.config.detail);
             status = result.status;
             score = result.score;
-            message = result.message;
+            message += result.message;
             if (resInteractor.code && !(resInteractor.stderr || '').trim().length) message += ` (Interactor exited with code ${resInteractor.code})`;
+            if (status === STATUS.STATUS_ACCEPTED) {
+                if (resInteractor.fileIds['nextpass.in']) {
+                    if (mp.i < ctx.config.multi_pass) {
+                        mp.input = { fileId: resInteractor.fileIds['nextpass.in'] };
+                        mp.state = resInteractor.fileIds['state.txt'] ? { 'state.txt': { fileId: resInteractor.fileIds['state.txt'] } } : undefined;
+                        mp.i++;
+                        return await runner!(ctx, ctxSubtask, runner);
+                    }
+                    status = STATUS.STATUS_SYSTEM_ERROR;
+                    score = 0;
+                    message = { message: 'Exceeded maximum number of passes ({0}).', params: [ctx.config.multi_pass] };
+                }
+            }
         }
         return {
             id: ctx.thisId + c.id,

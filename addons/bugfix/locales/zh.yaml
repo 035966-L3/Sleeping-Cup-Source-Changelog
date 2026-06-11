@@ -9,4 +9,7 @@ Sorry, there are no problems in the problem set.: 题库中没有题目。
 The 'default' role applies to ALL REGISTERED USER.: default 角色作用于<b>所有已注册用户</b>。
 Your browser does not support WebAuthn or you are not in secure context.: '您的浏览器不支持 WebAuthn 或是您不在安全环境中。'
 'Too frequent operations of {0} (limit: {2} operations in {1} seconds).': '{0} 超过频率限制。限制：{1} 秒内最多 {2} 次操作。'
+'User output longer than standard answer.': '你的输出比答案长。'
+'User output longer than standard answer.': '答案比你的输出长。'
+'On line {0}: Read {1}, expect {2}.': '第 {0} 行的答案错误，读取到 {1}，期望 {2}。'
 'Hint::icon::difficulty': '所有题目难度均根据思维难度、代码难度、知识点难度（参照 CCF 大纲，只在涉及不低于 6 级的知识点时考虑）人工标定，欢迎对不恰当的标定提出修改建议。'
