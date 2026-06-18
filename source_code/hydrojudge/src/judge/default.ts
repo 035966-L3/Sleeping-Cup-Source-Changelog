@@ -45,7 +45,7 @@ function judgeCase(c: NormalizedCase) {
             } else if (memory > c.memory * 1024) {
                 status = STATUS.STATUS_MEMORY_LIMIT_EXCEEDED;
             } else {
-                ({ outData, errData } = { 
+                ({ outData, errData } = {
                     outData: await fileload( fileIds.stdout ? { fileId: fileIds.stdout } : { content: '' } ),
                     errData: await fileload( fileIds.stderr ? { fileId: fileIds.stderr } : { content: '' } )
                 });
@@ -71,7 +71,9 @@ function judgeCase(c: NormalizedCase) {
                     },
                 });
                 ({ status, score, nextPass } = resChecker);
-                message += resChecker.message;
+                message = (typeof resChecker.message === 'string' && typeof message === 'string')
+                    ? message + resChecker.message
+                    : resChecker.message;
             }
         } else if (status === STATUS.STATUS_RUNTIME_ERROR && code && ctx.config.detail === 'full') {
             if (code < 32 && signalled) message = signals[code];

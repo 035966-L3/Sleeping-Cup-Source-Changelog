@@ -65,13 +65,15 @@ function judgeCase(c: NormalizedCase) {
             else message = { message: `${message}Your program returned {0}.`, params: [code] };
         } else {
             ({ outData, errData } = {
-                outData: await fileload( fileIds.stdout ? { fileId: fileIds.stdout } : { content: '' } ),
-                errData: await fileload( fileIds.stderr ? { fileId: fileIds.stderr } : { content: '' } )
+                outData: await fileload( resInteractor.fileIds['stdout'] ? { fileId: resInteractor.fileIds['stdout'] } : { content: '' } ),
+                errData: await fileload( resInteractor.fileIds['stderr'] ? { fileId: resInteractor.fileIds['stderr'] } : { content: '' } )
             });
             const result = parse(resInteractor.stderr, c.score, ctx.config.detail);
             status = result.status;
             score = result.score;
-            message += result.message;
+            message = (typeof result.message === 'string' && typeof message === 'string')
+                ? message + result.message
+                : result.message;
             if (resInteractor.code && !(resInteractor.stderr || '').trim().length) message += ` (Interactor exited with code ${resInteractor.code})`;
             if (status === STATUS.STATUS_ACCEPTED) {
                 if (resInteractor.fileIds['nextpass.in']) {

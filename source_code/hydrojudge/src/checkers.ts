@@ -32,8 +32,8 @@ function parseDiffMsg(msg: string) {
         const lline = meta.split('L=')[1];
         if (lline?.trim() === 'EOF') {
             const next = u.split('EOF on ')[1].split(' ')[0];
-            if (next === 'usrout.processed') return 'Standard answer longer than user output.';
-            if (next === 'answer.processed') return 'User output longer than standard answer.';
+            if (next === 'usrout.processed') return { message: 'Standard answer longer than user output.', params: [] };
+            if (next === 'answer.processed') return { message: 'User output longer than standard answer.', params: [] };
             return `Unable to parse: ${u}`;
         }
         const lineNum = +lline;
@@ -42,8 +42,8 @@ function parseDiffMsg(msg: string) {
         const std = t.trim().split(' ');
         if (std.every((x) => !Number.isNaN(+x))) {
             // Number mode, report length not match
-            if (usr.length > std.length) return 'User output longer than standard answer.';
-            if (usr.length < std.length) return 'Standard answer longer than user output.';
+            if (usr.length > std.length) return { message: 'User output longer than standard answer.', params: [] };
+            if (usr.length < std.length) return { message: 'Standard answer longer than user output.', params: [] };
         }
         for (let i = 0; i < usr.length; i++) {
             if (usr[i] === std[i]) continue;
@@ -341,7 +341,7 @@ const checkers: Record<string, Checker> = new Proxy({
             : config.detail === 'full'
                 ? files['feedback_dir/teammessage.txt'] || files['feedback_dir/judgemessage.txt'] || ''
                 : '';
-        
+
         if (status === STATUS.STATUS_ACCEPTED && fileIds['feedback_dir/nextpass.in']) {
             return {
                 status,
@@ -355,7 +355,7 @@ const checkers: Record<string, Checker> = new Proxy({
                 },
             };
         }
-        
+
         return { status, score, message };
     },
 }, {
