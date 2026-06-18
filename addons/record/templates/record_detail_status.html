@@ -1,7 +1,7 @@
 <div class="section visible" id="status" data-status="{{ rdoc.status }}">
   <div class="section__header">
     {% if rdoc.numberId %}
-    <h1 class="section__title">{{ _('Submission') }} <a href="/submission/{{ rdoc.numberId }}" class="submission-link">#{{ rdoc.numberId }}</a> ({{ rdoc._id|string }})</h1>
+    <h1 class="section__title">{{ _('Sleeping Cup Submission') }} <a href="/submission/{{ rdoc.numberId }}" class="submission-link">#{{ rdoc.numberId }}</a> ({{ rdoc._id|string }})</h1>
     <h3 class="section__title">{{ _('Click the case ID for more details.') }}</h3>
     <hr>
     {% endif %}
@@ -69,7 +69,7 @@
               {% if not rdoc.progress %}{{ model.builtin.STATUS_TEXTS[rdoc.subtasks[subtaskId]['status']]|default('Cancelled') }}{% endif %}
             </span>
             {% if skipped_count %}
-            <span> ({{ skipped_count }} skipped)</span>
+            <span> ({{ skipped_count }} {{ _('cases skipped') }})</span>
             {% endif %}
             <span
               class="float-right record-status--text {% if not rdoc.progress %}{{ model.builtin.STATUS_CODES[rdoc.subtasks[subtaskId]['status']]|default('ignored') }}{% endif %}">{% if not rdoc.progress %}{{ rdoc.subtasks[subtaskId]['score']|default(0) }}{% endif %}</span>
