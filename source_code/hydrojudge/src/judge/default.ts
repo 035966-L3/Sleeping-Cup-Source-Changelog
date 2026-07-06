@@ -24,7 +24,7 @@ function judgeCase(c: NormalizedCase) {
                 addressSpaceLimit: address_space_limit,
                 processLimit: process_limit,
             },
-            `judgeCase[${c.id}]${mp.i ? `[pass=${mp.i}]` : ''}<${ctx.rid}>`,
+            `judgeCase[${c.id}]${mp.i ? `{pass=${mp.i}}` : ''}<${ctx.rid}>`,
         );
         const {
             code, signalled, time, memory, fileIds,
@@ -49,7 +49,9 @@ function judgeCase(c: NormalizedCase) {
                     outData: await fileload( fileIds.stdout ? { fileId: fileIds.stdout } : { content: '' } ),
                     errData: await fileload( fileIds.stderr ? { fileId: fileIds.stderr } : { content: '' } )
                 });
-                const resChecker = await checkers[ctx.config.checker_type]({
+                ({
+                    status, score, message, nextPass,
+                } = await checkers[ctx.config.checker_type]({
                     execute: ctx.checker.execute,
                     copyIn: {
                         ...ctx.checker.copyIn,
@@ -69,15 +71,13 @@ function judgeCase(c: NormalizedCase) {
                         HYDRO_MEMORY_USAGE: Math.floor(memory / 1024).toString(),
                         ...(mp.i ? { HYDRO_MULTI_PASS: mp.i.toString() } : {}),
                     },
-                });
-                ({ status, score, nextPass } = resChecker);
-                message = (typeof resChecker.message === 'string' && typeof message === 'string')
-                    ? message + resChecker.message
-                    : resChecker.message;
+                }));
+                if (mp.i && typeof message === 'string') message = `${message} [Pass ${mp.i}]`;
             }
         } else if (status === STATUS.STATUS_RUNTIME_ERROR && code && ctx.config.detail === 'full') {
             if (code < 32 && signalled) message = signals[code];
-            else message = { message: `${message}Your program returned {0}.`, params: [code] };
+            else message = { message: 'Your program returned {0}.', params: [`${code}${mp.i ? ` [Pass ${mp.i}]` : ''}`] };
+            if (mp.i && typeof message === 'string') message = `${message} [Pass ${mp.i}]`;
         }
         if (nextPass) {
             if (mp.i < ctx.config.multi_pass) {

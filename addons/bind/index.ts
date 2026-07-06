@@ -41,6 +41,7 @@ async function initializeUri() {
 }
 
 async function successfulAuth(this: Handler, udoc: User) {
+    await this.ctx.serial('auth/before-login', this, udoc);
     await UserModel.setById(udoc._id, {
         loginat: new Date(), loginip: this.request.ip
     });
@@ -53,6 +54,7 @@ async function successfulAuth(this: Handler, udoc: User) {
     this.session.oauthBind = null;
     this.session.recreate = true;
     await oplog.log(this, 'user.loginSuccess', { uid: udoc._id });
+    await this.ctx.serial('auth/login', this, udoc);
 }
 
 
