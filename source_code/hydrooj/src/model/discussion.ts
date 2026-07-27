@@ -298,7 +298,7 @@ export async function getVnode(domainId: string, type: number, id: string, uid?:
     if (id !== undefined && resultNodeId === null) throw new DiscussionNodeNotFoundError(domainId, `node/${id}`);
     return {
         title: id,
-        ...resultNodeId,
+        ...await getNode(domainId, id),
         type,
         id,
         owner: 1,
@@ -315,7 +315,7 @@ export async function getListVnodes(domainId: string, ddocs: any, getHidden = fa
         const vnode = await getVnode(domainId, ddoc.parentType, ddoc.parentId.toString());
         res[ddoc.parentType] ||= {};
         if (!getHidden && vnode.hidden) return;
-        if (vnode.assign?.length && Set.intersection(vnode.assign, assign).size) return;
+        if (vnode.assign?.length && new Set(vnode.assign).intersection(new Set(assign)).size) return;
         res[ddoc.parentType][ddoc.parentId] = vnode;
     }
     await Promise.all(ddocs.map((ddoc) => task(ddoc)));
@@ -327,7 +327,7 @@ export function checkVNodeVisibility(type: number, vnode: any, user: User) {
         if (vnode.hidden && !user.own(vnode) && !user.hasPerm(PERM.PERM_VIEW_PROBLEM_HIDDEN)) return false;
     }
     if ([document.TYPE_CONTEST, document.TYPE_TRAINING].includes(type as any)) {
-        if (!user.own(vnode) && vnode.assign?.length && !Set.intersection(vnode.assign, user.group).size) return false;
+        if (!user.own(vnode) && vnode.assign?.length && !new Set(vnode.assign).intersection(new Set(user.group)).size) return false;
     }
     return true;
 }
