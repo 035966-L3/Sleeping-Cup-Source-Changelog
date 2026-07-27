@@ -17,31 +17,3 @@
 .contest-type--sleepingcupcoder .contest-type-tag:hover {
     background: #f695ac
 }
-
-.scoreboard--acm > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--oi > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--homework > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--ioi > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--ledo > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--strictioi > div > div > div > table {
-    position: static !important;
-}
-
-.scoreboard--sleepingcupcoder > div > div > div > table {
-    position: static !important;
-}
