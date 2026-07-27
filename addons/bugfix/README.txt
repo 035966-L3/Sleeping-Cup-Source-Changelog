@@ -1,1 +1,1 @@
-Relate source code changes: hydrooj/src/*/discussion.ts
+Relate source code changes: hydrooj/src/model/discussion.ts
