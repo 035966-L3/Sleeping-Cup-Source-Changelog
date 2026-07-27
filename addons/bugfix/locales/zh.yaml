@@ -1,9 +1,9 @@
-'{0} is a moderator of this domain.': '{0} 是这个域的管理者之一。'
-'{0} is a superuser.': '{0} 是超级管理员。'
-'Format: category 1, category 2, ..., category n': '格式：分类 1, 分类 2, ..., 分类 N'
+'{0} is a moderator of this domain.': '{0}是这个域的管理者之一。'
+'{0} is a superuser.': '{0}是超级管理员。'
+'Format: category 1, sub category 1.1, sub category 1.2, ..., sub category 1.x, ..., category n, sub category n.1, sub category n.2, ..., sub category n.m, ...': 格式：分类 1, 子分类 1.1, 子分类 1.2, ..., 子分类 1.x, ..., 分类 n, 子分类 n.1, 子分类 n.2, ..., 子分类 n.m, ...
 'File IO: {0}': '文件 IO (*.in / *.out): {0}'
 6-Digit Code: '6 位代码'
-Allow to maintain this {0}: '允许管理此 {0}'
+Allow to maintain this {0}: '允许管理此{0}'
 Argument {0} is invalid.: 非法的参数 {0}。
 Sorry, there are no problems in the problem set.: 题库中没有题目。
 The 'default' role applies to ALL REGISTERED USER.: default 角色作用于<b>所有已注册用户</b>。
