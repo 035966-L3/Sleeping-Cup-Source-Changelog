@@ -3,7 +3,7 @@ import { fs } from '@hydrooj/utils';
 import checkers from '../checkers';
 import { runFlow } from '../flow';
 import { runQueued } from '../sandbox';
-import { Context } from './interface';
+import { Context, ContextSubTask } from './interface';
 
 function judgeCase(c: NormalizedCase) {
     return async (ctx: Context, ctxSubtask: ContextSubTask) => {
