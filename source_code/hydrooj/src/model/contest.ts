@@ -1094,21 +1094,21 @@ export function canViewHiddenScoreboard(this: { user: User }, tdoc: Tdoc) {
 }
 
 export async function canShowRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
 }
 
 export async function canShowSelfRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showSelfRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
 }
 
 export async function canShowScoreboard(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showScoreboard(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
@@ -1118,7 +1118,7 @@ export async function getScoreboard(
     this: Handler, domainId: string, tid: ObjectId, config: ScoreboardConfig,
 ): Promise<[Tdoc, ScoreboardRow[], BaseUserDict, ProblemDict]> {
     const tdoc = await get(domainId, tid);
-    if (!canShowScoreboard.call(this, tdoc)) throw new ContestScoreboardHiddenError(tid);
+    if (!await canShowScoreboard.call(this, tdoc)) throw new ContestScoreboardHiddenError(tid);
     const tsdocsCursor = getMultiStatus(domainId, { docId: tid }).sort(RULES[tdoc.rule].statusSort);
     const pdict = await problem.getList(domainId, tdoc.pids, true, true, problem.PROJECTION_CONTEST_DETAIL);
     const [rows, udict] = await RULES[tdoc.rule].scoreboard(
