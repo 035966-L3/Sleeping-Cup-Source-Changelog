@@ -105,9 +105,9 @@ const acm = buildContestRule({
     check: () => { },
     statusSort: { accept: -1, time: 1 },
     submitAfterAccept: false,
-    showScoreboard: (tdoc, now) => now > tdoc.beginAt,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.beginAt,
     showSelfRecord: () => true,
-    showRecord: (tdoc, now) => now > tdoc.endAt && !isLocked(tdoc),
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt && !isLocked(tdoc),
     stat(tdoc, tsdoc, journal: AcmJournal[]) {
         const naccept = Counter<number>();
         const npending = Counter<number>();
@@ -315,9 +315,9 @@ const oi = buildContestRule({
         }
         return { score, detail, display };
     },
-    showScoreboard: (tdoc, now) => now > tdoc.endAt && !tdoc.keepScoreboardHidden,
-    showSelfRecord: (tdoc, now) => now > tdoc.endAt && !tdoc.keepScoreboardHidden,
-    showRecord: (tdoc, now) => now > tdoc.endAt && !tdoc.keepScoreboardHidden,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.endAt && !tdoc.keepScoreboardHidden,
+    showSelfRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt && !tdoc.keepScoreboardHidden,
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt && !tdoc.keepScoreboardHidden,
     async scoreboardHeader(config, _, tdoc, pdict) {
         const columns: ScoreboardNode[] = [
             { type: 'rank', value: '#' },
@@ -469,9 +469,9 @@ const ioi = buildContestRule({
     TEXT: 'IOI',
     submitAfterAccept: false,
 
-    showRecord: (tdoc, now) => now > tdoc.endAt && !isLocked(tdoc),
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt && !isLocked(tdoc),
     showSelfRecord: () => true,
-    showScoreboard: (tdoc, now) => now > tdoc.beginAt,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.beginAt,
     applyProjection(_, rdoc) {
         return rdoc;
     },
@@ -480,9 +480,9 @@ const ioi = buildContestRule({
 const strictioi = buildContestRule({
     TEXT: 'IOI(Strict)',
     submitAfterAccept: false,
-    showRecord: (tdoc, now) => now > tdoc.endAt && !tdoc.keepScoreboardHidden,
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt && !tdoc.keepScoreboardHidden,
     showSelfRecord: (tdoc) => !tdoc.keepScoreboardHidden || !isDone(tdoc),
-    showScoreboard: (tdoc, now) => now > tdoc.endAt && !tdoc.keepScoreboardHidden,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.endAt && !tdoc.keepScoreboardHidden,
     stat(tdoc, tsdoc, journal) {
         const detail = {};
         let score = 0;
@@ -560,9 +560,9 @@ const ledo = buildContestRule({
     TEXT: 'Ledo',
     check: () => { },
     submitAfterAccept: false,
-    showScoreboard: (tdoc, now) => now > tdoc.beginAt,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.beginAt,
     showSelfRecord: () => true,
-    showRecord: (tdoc, now) => now > tdoc.endAt,
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt,
     stat(tdoc, tsdoc, journal) {
         const ntry = Counter<number>();
         const detail = {};
@@ -641,9 +641,9 @@ const sleepingcupcoder = buildContestRule({
     TEXT: 'Sleeping Cup',
     check: () => { },
     submitAfterAccept: false,
-    showScoreboard: (tdoc, now) => now > tdoc.beginAt,
+    showScoreboard: (tdoc, tsdoc, now) => now > tsdoc.beginAt,
     showSelfRecord: () => true,
-    showRecord: (tdoc, now) => now > tdoc.endAt,
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt,
     stat(tdoc, tsdoc, journal) {
         const ntry = Counter<number>();
         const detail = {};
@@ -772,7 +772,7 @@ const homework = buildContestRule({
     },
     showScoreboard: () => true,
     showSelfRecord: () => true,
-    showRecord: (tdoc, now) => now > tdoc.endAt,
+    showRecord: (tdoc, tsdoc, now) => now > tsdoc.endAt,
     async scoreboardHeader(config, _, tdoc, pdict) {
         const columns: ScoreboardNode[] = [
             { type: 'rank', value: _('Rank') },
@@ -1093,20 +1093,23 @@ export function canViewHiddenScoreboard(this: { user: User }, tdoc: Tdoc) {
     return this.user.hasPerm(PERM.PERM_VIEW_CONTEST_HIDDEN_SCOREBOARD);
 }
 
-export function canShowRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    if (RULES[tdoc.rule].showRecord(tdoc, new Date())) return true;
+export async function canShowRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    if (RULES[tdoc.rule].showRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
 }
 
-export function canShowSelfRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    if (RULES[tdoc.rule].showSelfRecord(tdoc, new Date())) return true;
+export async function canShowSelfRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    if (RULES[tdoc.rule].showSelfRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
 }
 
-export function canShowScoreboard(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
-    if (RULES[tdoc.rule].showScoreboard(tdoc, new Date())) return true;
+export async function canShowScoreboard(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id);
+    if (RULES[tdoc.rule].showScoreboard(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
     return false;
 }
