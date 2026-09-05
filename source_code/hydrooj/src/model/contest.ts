@@ -1029,6 +1029,12 @@ export async function attend(domainId: string, tid: ObjectId, uid: number, paylo
     return {};
 }
 
+export async function cancelAttend(domainId: string, tid: ObjectId, uid: number) {
+    await document.deleteMultiStatus(domainId, document.TYPE_CONTEST, { docId: tid, uid });
+    await document.inc(domainId, document.TYPE_CONTEST, tid, 'attend', -1);
+    return {};
+}
+
 export function getMultiStatus(domainId: string, query: any) {
     return document.getMultiStatus(domainId, document.TYPE_CONTEST, query);
 }
@@ -1165,7 +1171,7 @@ export function applyProjection(tdoc: Tdoc, rdoc: RecordDoc, udoc: User) {
     return RULES[tdoc.rule].applyProjection(tdoc, rdoc, udoc);
 }
 
-export const statusText = (tdoc: Tdoc, tsdoc?: ContestStatusDoc):string => (
+export const statusText = (tdoc: Tdoc, tsdoc?: ContestStatusDoc): string => (
     isNew(tdoc)
         ? 'New'
         : isUpcoming(tdoc)
@@ -1240,6 +1246,7 @@ global.Hydro.model.contest = {
     getListStatus,
     getMultiStatus,
     attend,
+    cancelAttend,
     edit,
     del,
     get,

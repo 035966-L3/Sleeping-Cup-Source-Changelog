@@ -6,14 +6,40 @@ import { getConfig } from './config';
 import { FormatError } from './error';
 import { Context, ContextSubTask } from './judge/interface';
 
-function mergeSumStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (secondStatus === null || secondStatus === undefined || secondStatus === 0 || secondStatus === STATUS.STATUS_CANCELED || firstStatus === secondStatus) ? firstStatus : ((firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL && secondStatus > STATUS.STATUS_ACCEPTED && secondStatus < STATUS.STATUS_PARTIAL || firstStatus === STATUS.STATUS_CANCELED || firstStatus === null || firstStatus === undefined) ? secondStatus : STATUS.STATUS_PARTIAL); }
+function mergeSumStatus(firstStatus: STATUS, secondStatus?: STATUS) {
+    return (secondStatus === null ||
+            secondStatus === undefined ||
+            secondStatus === 0 ||
+            secondStatus === STATUS.STATUS_CANCELED ||
+            firstStatus === secondStatus) ?
+                firstStatus :
+                ((firstStatus > STATUS.STATUS_ACCEPTED &&
+                    firstStatus < STATUS.STATUS_PARTIAL && 
+                    secondStatus > STATUS.STATUS_ACCEPTED &&
+                        secondStatus < STATUS.STATUS_PARTIAL ||
+                        firstStatus === STATUS.STATUS_CANCELED ||
+                        firstStatus === null ||
+                        firstStatus === undefined) ?
+                            secondStatus :
+                            STATUS.STATUS_PARTIAL);
+}
 
-function mergeMinStatus(firstStatus: STATUS, secondStatus?: STATUS) { return (firstStatus === STATUS.STATUS_CANCELED) ? secondStatus : ((firstStatus > STATUS.STATUS_ACCEPTED && firstStatus < STATUS.STATUS_PARTIAL) ? firstStatus : ((firstStatus === STATUS.STATUS_PARTIAL || secondStatus === STATUS.STATUS_PARTIAL) ? STATUS.STATUS_PARTIAL : firstStatus)); }
+function mergeMinStatus(firstStatus: STATUS, secondStatus?: STATUS) {
+    return (firstStatus === STATUS.STATUS_CANCELED) ?
+            secondStatus :
+            ((firstStatus > STATUS.STATUS_ACCEPTED &&
+                firstStatus < STATUS.STATUS_PARTIAL) ?
+                    firstStatus :
+                    ((firstStatus === STATUS.STATUS_PARTIAL ||
+                        secondStatus === STATUS.STATUS_PARTIAL) ?
+                            STATUS.STATUS_PARTIAL :
+                            firstStatus));
+}
 
 interface Task {
     compile: () => Promise<void>;
     judgeCase: (c: NormalizedCase) => (
-        (ctx: Context, ctxSubtask: ContextSubTask, runner?: Function) => Promise<JudgeResultBody['case']>
+        (ctx: Context, ctxSubtask: ContextSubTask) => Promise<JudgeResultBody['case']>
     );
 }
 
@@ -41,7 +67,10 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
             const runner = judgeCase(subtask.cases[cid]);
             cases.push(ctx.queue.add(async () => {
                 const res = (ctx.errored
-                    || (subtask.type === 'min' && ctxSubtask.score === 0)
+                    || (subtask.type === 'min' &&
+                        ctxSubtask.status > STATUS.STATUS_ACCEPTED &&
+                        ctxSubtask.status > STATUS.STATUS_PARTIAL &&
+                        ctxSubtask.status != STATUS.STATUS_CANCELED)
                     || (subtask.if || []).filter((i) => ctx.failed[i]).length)
                     ? {
                         id: currentId,
@@ -53,7 +82,7 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
                         message: '',
                     } : await (async () => {
                         using span = ctx.startChildSpan('judge.case', { id: subtask.cases[cid].id, subtaskId: subtask.id });
-                        const r = await runner(ctx, ctxSubtask, runner);
+                        const r = await runner(ctx, ctxSubtask);
                         span.setAttributes({ status: r?.status, time: r?.time, memory: r?.memory });
                         return r;
                     })();
@@ -104,7 +133,7 @@ export const runFlow = async (ctx: Context, task: Task) => {
             score: subtask.type === 'min' ? subtask.score : 0,
         };
         const runner = task.judgeCase(subtask.cases.find((i) => i.input.endsWith(ctx.meta.hackRejudge)));
-        const res = await runner(ctx, ctxSubtask, runner);
+        const res = await runner(ctx, ctxSubtask);
         if (res) ctx.next({ case: res });
         if (res?.status !== STATUS.STATUS_ACCEPTED) {
             const totalScore = Math.sum(ctx.config.subtasks.map((i) => i.score));
@@ -118,12 +147,11 @@ export const runFlow = async (ctx: Context, task: Task) => {
         }
     } else {
         const infos = {};
-        ctx.thisId = 0;
-        for (const [key, value] of Object.entries(ctx.config.subtasks)) {
+        await Promise.all(Object.entries(ctx.config.subtasks).map(async ([key, value]) => {
             const sid = value.id?.toString() || key;
             infos[sid] = await judgeSubtask(value, sid, task.judgeCase)(ctx);
             ctx.thisId += value.cases.length || 0;
-        }
+        }));
         for (const [key, value] of Object.entries(ctx.config.subtasks)) {
             let effective = true;
             const sid = value.id?.toString() || key;

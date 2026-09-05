@@ -16,11 +16,13 @@ export interface CheckConfig {
     env?: Record<string, string>;
 }
 
+export interface PassInfo { input: CopyInFile, state?: Record<string, CopyInFile>, dispose: () => PromiseLike<any> }
+
 type Checker = (config: CheckConfig) => Promise<{
     status: number;
     score: number;
-    message: string;
-    nextPass?: { input: CopyInFile, state?: Record<string, CopyInFile> };
+    message: string | { message: string, params?: any[] };
+    nextPass?: PassInfo;
 }>;
 
 function parseDiffMsg(msg: string) {
@@ -121,7 +123,7 @@ const getDefaultChecker = (strict: boolean) => async (config: CheckConfig) => {
         status = STATUS.STATUS_WRONG_ANSWER;
         if (config.detail === 'full') message = parseDiffMsg(stdout);
     } else status = STATUS.STATUS_ACCEPTED;
-    if (message.length > 1024000) message = '';
+    if (typeof message === 'string' && message.length > 1024000) message = '';
     return {
         score: status === STATUS.STATUS_ACCEPTED ? config.score : 0,
         status,
@@ -253,7 +255,7 @@ const checkers: Record<string, Checker> = new Proxy({
     },
 
     async testlib(config) {
-        const { stderr, status, code, fileIds } = await runQueued(`${config.execute} /w/in /w/user_out /w/answer`, {
+        const { stderr, status, code, fileIds, [Symbol.asyncDispose]: dispose } = await runQueued(`${config.execute} /w/in /w/user_out /w/answer`, {
             time: 60000,
             memory: 512,
             copyIn: {
@@ -272,6 +274,7 @@ const checkers: Record<string, Checker> = new Proxy({
                 [STATUS.STATUS_TIME_LIMIT_EXCEEDED]: 'Checker Time Limit Exceeded',
                 [STATUS.STATUS_MEMORY_LIMIT_EXCEEDED]: 'Checker Memory Limit Exceeded',
             }[status];
+            dispose();
             return {
                 status: STATUS.STATUS_SYSTEM_ERROR,
                 score: 0,
@@ -279,6 +282,7 @@ const checkers: Record<string, Checker> = new Proxy({
             };
         }
         if (status === STATUS.STATUS_RUNTIME_ERROR && !stderr?.trim()) {
+            dispose();
             return {
                 status: STATUS.STATUS_SYSTEM_ERROR,
                 score: 0,
@@ -292,15 +296,17 @@ const checkers: Record<string, Checker> = new Proxy({
                 nextPass: {
                     input: { fileId: fileIds['nextpass.in'] },
                     state: fileIds['state.txt'] ? { 'state.txt': { fileId: fileIds['state.txt'] } } : undefined,
+                    dispose,
                 },
             };
         }
+        dispose();
         return result;
     },
 
     // https://www.kattis.com/problem-package-format/spec/2023-07-draft.html#output-validator
     async kattis(config) {
-        const { files, fileIds, code } = await runQueued(`${config.execute} input answer_file feedback_dir`, {
+        const { files, fileIds, code, [Symbol.asyncDispose]: dispose } = await runQueued(`${config.execute} input answer_file feedback_dir`, {
             time: 60000,
             memory: 512,
             copyIn: {
@@ -352,10 +358,12 @@ const checkers: Record<string, Checker> = new Proxy({
                     state: fileIds['feedback_dir/state.txt']
                         ? { 'feedback_dir/state.txt': { fileId: fileIds['feedback_dir/state.txt'] } }
                         : undefined,
+                    dispose,
                 },
             };
         }
 
+        dispose();
         return { status, score, message };
     },
 }, {

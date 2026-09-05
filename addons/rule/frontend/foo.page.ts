@@ -1,4 +1,4 @@
-import './bugfix.css';
+import './rule.css';
 import { addPage, NamedPage } from '@hydrooj/ui-default';
 
 addPage(new NamedPage(['problem_config'], () => {
