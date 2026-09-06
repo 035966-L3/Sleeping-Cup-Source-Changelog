@@ -83,8 +83,8 @@
         {%- for rcdoc in rcdocs|sort(false,false,'id') -%}
         {%- if rcdoc['status'] != 9 -%}
         {%- if rcdocs.length != 1 or rcdoc.time != 0 or rcdoc.memory != 0 or rcdoc.message or _key == 'id' and rdoc.testCases.length > 1 -%}
-        <tr class="case"{%- if rcdoc['status'] == 1 -%} style="display: none;"{% endif %}>
-          <td class="col--case record-status--border {{ model.builtin.STATUS_CODES[rcdoc['status']] }}>
+        <tr class="case"{% if rcdoc['status'] == 1 %} style="display: none;"{% endif %}>
+          <td class="col--case record-status--border {{ model.builtin.STATUS_CODES[rcdoc['status']] }}">
             <a href="/submission/detail/{{ rdoc.numberId }}/{{ rcdoc.subtaskId|int|default(1) }}/{{ rcdoc.id|default(loop.index) }}">#{{ rcdoc.id|int|default(1) }}</a>
           </td>
           <td class="col--status">
