@@ -75,12 +75,12 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
         canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE);
         canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE_ACCEPT) && self?.status === STATUS.STATUS_ACCEPTED;
         if (this.tdoc) {
-            const tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
+            this.tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
             canViewCode ||= this.user.own(this.tdoc);
             if (this.tdoc.allowViewCode && global.Hydro.model.contest.isDone(this.tdoc)) {
-                canViewCode ||= tsdoc?.attend;
+                canViewCode ||= !!this.tsdoc?.attend;
             }
-            if (!tsdoc?.attend && pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
+            if (!this.tsdoc?.attend && pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
         } else if (pdoc && !global.Hydro.model.problem.canViewBy(pdoc, this.user)) throw new PermissionError(PERM.PERM_VIEW_PROBLEM_HIDDEN);
         if (!canViewCode) {
             rdoc.code = '';
