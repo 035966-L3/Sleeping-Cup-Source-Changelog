@@ -47,7 +47,7 @@ export async function judge({
             const [subtaskId, caseId] = key.includes('-') ? key.split('-').map(Number) : [key * 1, 1];
             totalScore += score;
             totalStatus = mergeStatus(totalStatus, status);
-            subtasks[subtaskId] ||= { score: 0, status: STATUS.STATUS_JUDGING };
+            subtasks[subtaskId] ||= { score: 0, status: 0 };
             subtasks[subtaskId].score += score;
             subtasks[subtaskId].status = mergeStatus(subtasks[subtaskId].status, status);
             next({

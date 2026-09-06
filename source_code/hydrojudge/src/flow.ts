@@ -14,14 +14,14 @@ function mergeSumStatus(firstStatus: STATUS, secondStatus?: STATUS) {
             firstStatus === secondStatus) ?
                 firstStatus :
                 ((firstStatus > STATUS.STATUS_ACCEPTED &&
-                    firstStatus < STATUS.STATUS_PARTIAL && 
-                    secondStatus > STATUS.STATUS_ACCEPTED &&
+                        firstStatus < STATUS.STATUS_PARTIAL && 
+                        secondStatus > STATUS.STATUS_ACCEPTED &&
                         secondStatus < STATUS.STATUS_PARTIAL ||
-                        firstStatus === STATUS.STATUS_CANCELED ||
-                        firstStatus === null ||
-                        firstStatus === undefined) ?
-                            secondStatus :
-                            STATUS.STATUS_PARTIAL);
+                    firstStatus === STATUS.STATUS_CANCELED ||
+                    firstStatus === null ||
+                    firstStatus === undefined) ?
+                        secondStatus :
+                        STATUS.STATUS_PARTIAL);
 }
 
 function mergeMinStatus(firstStatus: STATUS, secondStatus?: STATUS) {
@@ -64,7 +64,9 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
         for (const cid in subtask.cases) {
             thatId += 1;
             let currentId = thatId;
-            const runner = judgeCase(subtask.cases[cid]);
+            let currentC = subtask.cases[cid];
+            currentC.id = thatId;
+            const runner = judgeCase(currentC);
             cases.push(ctx.queue.add(async () => {
                 const res = (ctx.errored
                     || (subtask.type === 'min' &&
@@ -125,6 +127,7 @@ export const runFlow = async (ctx: Context, task: Task) => {
     ctx.rerun = getConfig('rerun') || 0;
     ctx.queue = new Queue({ concurrency: getConfig('singleTaskParallelism') });
     ctx.failed = {};
+    ctx.thisId = 0;
     if (ctx.meta.hackRejudge) {
         const subtask = ctx.config.subtasks.find((i) => i.cases.find((j) => j.input.endsWith(ctx.meta.hackRejudge)));
         const ctxSubtask = {
@@ -147,11 +150,11 @@ export const runFlow = async (ctx: Context, task: Task) => {
         }
     } else {
         const infos = {};
-        await Promise.all(Object.entries(ctx.config.subtasks).map(async ([key, value]) => {
+        for (const [key, value] of Object.entries(ctx.config.subtasks)) {
             const sid = value.id?.toString() || key;
             infos[sid] = await judgeSubtask(value, sid, task.judgeCase)(ctx);
-            ctx.thisId += value.cases.length || 0;
-        }));
+            ctx.thisId += value.cases?.length || 0;
+        }
         for (const [key, value] of Object.entries(ctx.config.subtasks)) {
             let effective = true;
             const sid = value.id?.toString() || key;

@@ -34,6 +34,12 @@ const judgeCase = (c: NormalizedCase) => async (ctx: Context, ctxSubtask: Contex
         let message: any = '';
         let score = 0;
         let nextPass;
+        let { inData, ansData, outData, errData } = {
+            inData: await fileload({ src: c.input }),
+            ansData: await fileload({ src: c.output }),
+            outData: "",
+            errData: ""
+        };
         if (status === STATUS.STATUS_ACCEPTED) {
             if (time > c.time) {
                 status = STATUS.STATUS_TIME_LIMIT_EXCEEDED;
@@ -95,7 +101,7 @@ const judgeCase = (c: NormalizedCase) => async (ctx: Context, ctxSubtask: Contex
         }
         state.dispose();
         return {
-            id: ctx.thisId + c.id,
+            id: c.id,
             subtaskId: ctxSubtask.subtask.id,
             inData,
             outData,

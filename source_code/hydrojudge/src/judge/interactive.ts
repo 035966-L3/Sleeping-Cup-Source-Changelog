@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { NormalizedCase, STATUS } from '@hydrooj/common';
+import fileload from '../fileload';
 import { PassInfo } from '../checkers';
 import { runFlow } from '../flow';
 import { runPiped } from '../sandbox';
@@ -94,7 +95,7 @@ const judgeCase = (c: NormalizedCase) => async (ctx: Context, ctxSubtask: Contex
         dispose();
         state.dispose();
         return {
-            id: ctx.thisId + c.id,
+            id: c.id,
             subtaskId: ctxSubtask.subtask.id,
             inData,
             outData,

@@ -51,5 +51,5 @@ export function parse(output: string, fullscore: number, detail: DetailType) {
             score = +val;
         }
     }
-    return { status, score, message: builder(detail === 'full' ? message : '') };
+    return { status, score, message: (detail === 'full' ? message : '') };
 }
