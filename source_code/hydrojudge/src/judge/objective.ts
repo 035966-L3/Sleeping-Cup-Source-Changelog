@@ -4,7 +4,14 @@ import { fs, yaml } from '@hydrooj/utils';
 import { FormatError } from '../error';
 import { Context } from './interface';
 
-function mergeStatus(firstStatus: STATUS, secondStatus: STATUS) { return (firstStatus === secondStatus || firstStatus === STATUS.STATUS_JUDGING) ? secondStatus : STATUS.STATUS_PARTIAL; }
+function mergeStatus(firstStatus: STATUS, secondStatus: STATUS) {
+    return (firstStatus === secondStatus ||
+            firstStatus === 0 ||
+            firstStatus === null ||
+            firstStatus === undefined) ?
+                secondStatus :
+                STATUS.STATUS_PARTIAL;
+}
 
 export async function judge({
     next, end, config, code,
@@ -30,7 +37,7 @@ export async function judge({
         return null;
     }
     let totalScore = 0;
-    let totalStatus = STATUS.STATUS_JUDGING;
+    let totalStatus = 0;
     const subtasks = {};
     if (!Object.keys(config.answers).length) throw new FormatError('Invalid standard answer.');
     for (const key in config.answers) {
