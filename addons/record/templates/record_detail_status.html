@@ -2,6 +2,7 @@
   <div class="section__header">
     {% if rdoc.numberId %}
     <h1 class="section__title">{{ _('Sleeping Cup Submission') }} <a href="/submission/{{ rdoc.numberId }}" class="submission-link">#{{ rdoc.numberId }}</a> ({{ rdoc._id|string }})</h1>
+    <h3 class="section__title submission-link" onclick="document.querySelectorAll('.case').forEach((e) => e.style = '');">{{ _('Click here to show the passed cases.') }}</h3>
     <h3 class="section__title">{{ _('Click the case ID for more details.') }}</h3>
     <hr>
     {% endif %}
@@ -82,8 +83,8 @@
         {%- for rcdoc in rcdocs|sort(false,false,'id') -%}
         {%- if rcdoc['status'] != 9 -%}
         {%- if rcdocs.length != 1 or rcdoc.time != 0 or rcdoc.memory != 0 or rcdoc.message or _key == 'id' and rdoc.testCases.length > 1 -%}
-        <tr class="case">
-          <td class="col--case record-status--border {{ model.builtin.STATUS_CODES[rcdoc['status']] }}">
+        <tr class="case"{%- if rcdoc['status'] == 1 -%} style="display: none;"{% endif %}>
+          <td class="col--case record-status--border {{ model.builtin.STATUS_CODES[rcdoc['status']] }}>
             <a href="/submission/detail/{{ rdoc.numberId }}/{{ rcdoc.subtaskId|int|default(1) }}/{{ rcdoc.id|default(loop.index) }}">#{{ rcdoc.id|int|default(1) }}</a>
           </td>
           <td class="col--status">
