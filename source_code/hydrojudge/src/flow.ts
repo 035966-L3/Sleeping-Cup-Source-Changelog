@@ -71,7 +71,7 @@ function judgeSubtask(subtask: NormalizedSubtask, sid: string, judgeCase: Task['
                 const res = (ctx.errored
                     || (subtask.type === 'min' &&
                         ctxSubtask.status > STATUS.STATUS_ACCEPTED &&
-                        ctxSubtask.status > STATUS.STATUS_PARTIAL &&
+                        ctxSubtask.status < STATUS.STATUS_PARTIAL &&
                         ctxSubtask.status != STATUS.STATUS_CANCELED)
                     || (subtask.if || []).filter((i) => ctx.failed[i]).length)
                     ? {
