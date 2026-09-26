@@ -1,0 +1,65 @@
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-12 columns">
+    <div class="section visible">
+      <div class="section__header">
+        <h1 class="section__title" style="text-align: center; font-size: 32px; font-weight: 700;">{{ _('The Bogo Round') }} #{{ board.docId }} ({{ datetimeSpan(board.beginAt)|safe }} - {{ datetimeSpan(board.finishAt)|safe }})</h1>
+      </div>
+    </div>
+    <div class="section visible">
+      <div class="section__header">
+        <h1 class="section__title" style="width: 100%; text-align: center; white-space: nowrap; font-size: 0px; font-weight: 500; margin-top: 25px; margin-bottom: 25px;">
+          {%- for i in [0,1,2,3,4,5,6,7,8,9] -%}
+          <span {% if board.originalBoard[i] % 3 == 0 %} class="text-orange" {% endif %} style="width: 9.5%; font-size: 32px; display: inline-block;"> <div> {{ board.originalBoard[i] }} </div> <div style="font-size: 12px; font-weight: 300;"> ({{ _('Index') }} {{ i }}) </div> </span>
+          {%- endfor -%}
+        </h1>
+      </div>
+    </div>
+    <div class="section visible">
+      <table class="data-table">
+        <colgroup>
+          <col style="text-align: right;">
+          <col style="text-align: right; width: 10rem;">
+          <col style="text-align: right; width: 15rem;">
+          <col style="text-align: right;">
+          <col style="text-align: right;">
+          <col style="text-align: right; width: 15rem;">
+          <col style="text-align: right;">
+          <col style="text-align: right;">
+          <col style="text-align: right;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="text-align: right;">{{ _('Operation ID') }}</th>
+            <th style="text-align: right; width: 10rem;">{{ _('At') }}</th>
+            <th style="text-align: right; width: 15rem;">{{ _('Username') }}</th>
+            <th style="text-align: right;">{{ _('Swap') }}</th>
+            <th style="text-align: right;">{{ _('For') }}</th>
+            <th style="text-align: right; width: 15rem;">{{ _('New Sequence') }}</th>
+            <th style="text-align: right;">{{ _('Operation') }}</th>
+            <th style="text-align: right;">{{ _('Status') }}</th>
+            <th style="text-align: right;">{{ _('Profit') }}</th>
+          </tr>
+        </thead>
+        <tbody>              
+          {%- for record in board.operationSequence -%}
+          <tr>
+            <td style="text-align: right;">{{ loop.index }}</td>
+            <td style="text-align: right; width: 10rem;">{{ datetimeSpan(record.processedAt)|safe }}</td>
+            <td style="text-align: right; width: 15rem;">{{ user.render_inline(userList[record.uid]) }}</td>
+            <td style="text-align: right;">{{ _('Index') }} {{ record.consumedBogoToken.first }}</td>
+            <td style="text-align: right;">{{ _('Index') }} {{ record.consumedBogoToken.second }}</td>
+            <td style="text-align: right; width: 15rem;">{{ record.newBoard|json|replace(',',', ') }}</td>
+            <td style="text-align: right;">{{ _('To ' + record.operation) }}</td>
+            <td style="text-align: right;">{{ _(record.operationStatus) }}</td>
+            <td style="text-align: right;">{% if record.profit > 0 %}+{% endif %}{{ record.profit }}{% if record.jackpot > 0 %} <span class="text-orange">(+{{ record.jackpot }})</span>{% endif %}</td>
+          </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

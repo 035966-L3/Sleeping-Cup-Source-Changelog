@@ -1,0 +1,41 @@
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-12 columns">
+    <div class="section visible">
+      <div class="section__header">
+        <h1 class="section__title" style="text-align: center; font-size: 32px; font-weight: 700;">{{ _('Bogo Ranking By The End Of Bogo Round') }} #{{ board.docId }} ({{ datetimeSpan(board.finishAt)|safe }})</h1>
+      </div>
+    </div>
+    <div class="section visible">
+      <table class="data-table">
+        <colgroup>
+          <col style="text-align: right;">
+          <col style="text-align: right; width: 50rem;">
+          <col style="text-align: right;">
+          <col style="text-align: right;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="text-align: right;">{{ _('Rank') }}</th>
+            <th style="text-align: right; width: 50rem;">{{ _('Username') }}</th>
+            <th style="text-align: right;">{{ _('Bogo Coins') }}</th>
+            <th style="text-align: right;">{{ _('Victory') }}</th>
+          </tr>
+        </thead>
+        <tbody>              
+          {%- for record in board.standingsSnapshot -%}
+          <tr>
+            <td style="text-align: right;">{{ record.rank }}</td>
+            <td style="text-align: right; width: 50rem;">{{ user.render_inline(userList[record.uid]) }}</td>
+            <td style="text-align: right;">{{ record.bogoCoins }}</td>
+            <td style="text-align: right;">{{ record.victory }}</td>
+          </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

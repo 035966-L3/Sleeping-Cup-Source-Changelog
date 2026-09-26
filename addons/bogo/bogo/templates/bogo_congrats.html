@@ -1,0 +1,32 @@
+{% extends "layout/basic.html" %}
+{% block content %}
+<div class="row">
+  <div class="medium-12 columns">
+    <div class="section visible">
+      <div class="section__header">
+        <h1 class="section__title" style="margin-top: 24px; margin-bottom: 72px; text-align: center; font-size: 72px; font-weight: 700;">{{ _('Congratulations!') }}</h1>
+      </div>
+      <div class="section__body">
+        <div style="text-align: center; font-size: 36px; font-weight: 700;">{{ _('You won Bogo Round') }} #{{ boardId }} {{ _('and took the jackpot of amount') }}</div>
+      </div>
+      <div class="section__body">
+        <h1 class="section__title" style="margin-top: 24px; margin-bottom: 48px; text-align: center; font-size: 360px; font-weight: 700;"><div class="text-orange" id="jackpot">0</div></h1>
+      </div>
+      <div class="section__body">
+        <a href="/bogo" class="rounded button" style="width: 100%; text-align: center;" id="back">{{ _('Go Back') }}</a>
+      </div>
+    </div>
+    <script>
+    const actualValue = {{ jackpot }};
+    async function climbAmount() {
+        for (let i = 1; i <= actualValue; i++) {
+            document.getElementById("jackpot").innerText = i.toString();
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+        document.getElementById("back").className = "rounded primary button";
+    }
+    </script>
+</div>
+
+{% endblock %}
