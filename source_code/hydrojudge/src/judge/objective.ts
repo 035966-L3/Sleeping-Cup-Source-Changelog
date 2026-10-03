@@ -78,8 +78,16 @@ export async function judge({
                 else report(STATUS.STATUS_WRONG_ANSWER, 0, '');
             } else if (stdAns.toString() === usrAns) report(STATUS.STATUS_ACCEPTED, fullScore, '');
             else report(STATUS.STATUS_WRONG_ANSWER, 0, '');
-        } else if (!ansInfo[usrAns]) report(STATUS.STATUS_WRONG_ANSWER, 0, '');
-        else report(STATUS.STATUS_ACCEPTED, +ansInfo[usrAns] || 0, '');
+        } else {
+            let fullScore = 0;
+            Object.values(ansInfo).forEach((candidate) => fullScore = Math.max(+candidate || 0, fullScore));
+            if (!(usrAns in ansInfo)) report(STATUS.STATUS_WRONG_ANSWER, 0, '');
+            else {
+                const usrScore = +ansInfo[usrAns] || 0;
+                const usrStatus = (usrScore >= fullScore) ? STATUS.STATUS_ACCEPTED : STATUS.STATUS_PARTIAL;
+                report(usrStatus, usrScore, '');
+            }
+        }
     }
     end({
         status: totalStatus, score: totalScore, time: 0, memory: 0, subtasks,
