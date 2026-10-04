@@ -1,11 +1,11 @@
 .submission-link {
     color: #5f9fd6 !important;
-    cursor: pointer;
+    cursor: pointer !important;
 }
 
 .theme--dark .submission-link {
     color: #55b6e2 !important;
-    cursor: pointer;
+    cursor: pointer !important;
 }
 
 .record-status--text.partial {
