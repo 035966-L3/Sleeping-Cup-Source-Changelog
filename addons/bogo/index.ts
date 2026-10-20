@@ -24,7 +24,7 @@ function generateRandomBogoPermutation() {
         let swapWith = 10;
         while (true) {
             const randomCharacter = randomstring(1);
-            if (/[0-9a-f]/.test(randomCharacter)) {
+            if (/[0-9]/.test(randomCharacter)) {
                 const theNumber = +randomCharacter;
                 if (theNumber <= i) {
                     swapWith = theNumber;
