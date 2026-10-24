@@ -23,20 +23,20 @@
       {% else %}
       <table class="data-table">
         <colgroup>
+          <col style="text-align: right; width: 10rem;">
           <col style="text-align: right;">
-          <col style="text-align: right; width: 10rem;">
-          <col style="text-align: right; width: 10rem;">
-          <col style="text-align: right; width: 10rem;">
+          <col style="text-align: right;">
+          <col style="text-align: right; width: 15rem;">
           <col style="text-align: right;">
           <col style="text-align: right;">
           <col style="text-align: right;">
         </colgroup>
         <thead>
           <tr>
-            <th style="text-align: right;">{{ _('Operation ID') }}</th>
             <th style="text-align: right; width: 10rem;">{{ _('At') }}</th>
-            <th style="text-align: right; width: 10rem;">{{ _('Swap') }}</th>
-            <th style="text-align: right; width: 10rem;">{{ _('For') }}</th>
+            <th style="text-align: right;">{{ _('Swap') }}</th>
+            <th style="text-align: right;">{{ _('For') }}</th>
+            <th style="text-align: right; width: 15rem;">{{ _('New Sequence') }}</th>
             <th style="text-align: right;">{{ _('Operation') }}</th>
             <th style="text-align: right;">{{ _('Status') }}</th>
             <th style="text-align: right;">{{ _('Profit') }}</th>
@@ -45,13 +45,13 @@
         <tbody>              
           {%- for record in myOperations -%}
           <tr>
-            <td style="text-align: right;">{{ record.id }}</td>
             <td style="text-align: right; width: 10rem;">{{ datetimeSpan(record.at)|safe }}</td>
-            <td style="text-align: right; width: 10rem;">{{ _('Index') }} {{ record.swap.index }} ({{ _('Element') }} {{ record.swap.element }})</td>
-            <td style="text-align: right; width: 10rem;">{{ _('Index') }} {{ record.swapFor.index }} ({{ _('Element') }} {{ record.swapFor.element }})</td>
+            <td style="text-align: right;">{{ _('Index') }} {{ record.swap }}</td>
+            <td style="text-align: right;">{{ _('Index') }} {{ record.swapFor }}</td>
+            <td style="text-align: right; width: 15rem;">{{ record.maskedNewBoard|json|replace(',',', ')|replace('"','')|replace('\'','"')|safe }}</td>
             <td style="text-align: right;">{{ _('To ' + record.operation) }}</td>
             <td style="text-align: right;">{{ _(record.status) }}</td>
-            <td style="text-align: right;">{% if record.profit > 0 %}+{% endif %}{{ record.profit }}</td>
+            <td style="text-align: right;">{% if record.profit %}<span class="text-orange">{% endif %}{% if record.profit > 0 %}+{% endif %}{{ record.profit }}{% if record.profit %}</span>{% endif %}</td>
           </tr>
           {%- endfor -%}
         </tbody>

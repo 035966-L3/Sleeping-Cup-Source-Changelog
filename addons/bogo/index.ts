@@ -60,20 +60,23 @@ function inversionCount(p: number[]) {
     return answer;
 }
 
-function generateFirstElementDescription(record, board) {
-    const index = record.consumedBogoToken.first;
-    let element = record.newBoard[record.consumedBogoToken.second];
-    if (record.operation === "Discard") element = record.newBoard[record.consumedBogoToken.first];
-    if (element % 3 === 0) element = board.mask[Math.round(element / 3)];
-    return { index: index, element: element };
-}
-
-function generateSecondElementDescription(record, board) {
-    const index = record.consumedBogoToken.second;
-    let element = record.newBoard[record.consumedBogoToken.first];
-    if (record.operation === "Discard") element = record.newBoard[record.consumedBogoToken.second];
-    if (element % 3 === 0) element = board.mask[Math.round(element / 3)];
-    return { index: index, element: element };
+export interface OperationDoc {
+    _id: ObjectId,
+    content: 'Apply' | 'Discard',
+    owner: number,
+    domainId: 'system',
+    docType: 2903,
+    docId: ObjectId,
+    bogoOperationId: number,
+    consumedBogoToken: { first: number; second: number },
+    newBoard: number[],
+    processedAt: Date,
+    profit: number,
+    won: boolean,
+    jackpot: number,
+    operationStatus: 'Success' | 'Failed' | 'Pending',
+    parentType: 29032903,
+    parentId: number,
 }
 
 export interface BoardDoc {
@@ -93,11 +96,12 @@ export interface BoardDoc {
     finishAt?: Date | null,
     winner: number,
     jackpot: number,
-    standingsSnapshot: any[];
+    standingsSnapshot: any[],
 }
 
 declare module 'hydrooj' {
     interface DocType {
+        [2903]: OperationDoc;
         [29032903]: BoardDoc;
     }
 }
@@ -114,17 +118,35 @@ export class BogoBoardHandler extends Handler {
         });
     }
     async get() {
+        await this.limitRate('bogo', 15, 3, udoc.uname);
         const boardId = await SystemModel.get("bogo.currentBoardId");
         const board = await DocumentModel.get('system', 29032903, boardId, null);
         const thisUser = await UserModel.getById('system', this.user._id);
         let myOperations = [];
         for (let i = 0; i < board.operationSequence.length; i++) {
             if (board.operationSequence[i].uid === this.user._id) {
+                let maskedNewBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                for (let j = 0; j < 10; j++) {
+                    maskedNewBoard[j] = board.currentBoard[j];
+                    if (board.currentBoard[j] % 3 === 0) {
+                        maskedNewBoard[j] = board.mask[board.currentBoard[j] / 3];
+                    }
+                }
+                if (board.operationSequence[i].operation === "Apply") {
+                    const highlightPrefix = "<span class='text-orange'>";
+                    const highlightSuffix = "</span>";
+                    const swap = board.operationSequence[i].consumedBogoToken.first;
+                    maskedNewBoard[swap] = highlightPrefix + maskedNewBoard[swap];
+                    maskedNewBoard[swap] = maskedNewBoard[swap] + highlightSuffix;
+                    const swapFor = board.operationSequence[i].consumedBogoToken.second;
+                    maskedNewBoard[swapFor] = highlightPrefix + maskedNewBoard[swapFor];
+                    maskedNewBoard[swapFor] = maskedNewBoard[swapFor] + highlightSuffix;
+                }
                 myOperations.push({
-                    id: i + 1,
                     at: board.operationSequence[i].processedAt,
-                    swap: generateFirstElementDescription(board.operationSequence[i], board),
-                    swapFor: generateSecondElementDescription(board.operationSequence[i], board),
+                    swap: board.operationSequence[i].consumedBogoToken.first,
+                    swapFor: board.operationSequence[i].consumedBogoToken.second,
+                    maskedNewBoard: maskedNewBoard,
                     operation: board.operationSequence[i].operation,
                     status: board.operationSequence[i].operationStatus,
                     profit: board.operationSequence[i].profit,
@@ -403,6 +425,18 @@ export class BogoBoardArchiveHandler extends Handler {
         for (let i = 0; i < board.operationSequence.length; i++) {
             if (!uidList.includes(board.operationSequence[i].uid)) {
                 uidList.push(board.operationSequence[i].uid);
+            }
+            if (board.operationSequence[i].operation === "Apply") {
+                let newBoard = board.operationSequence[i].newBoard;
+                const highlightPrefix = "<span class='text-orange'>";
+                const highlightSuffix = "</span>";
+                const swap = board.operationSequence[i].consumedBogoToken.first;
+                newBoard[swap] = highlightPrefix + newBoard[swap];
+                newBoard[swap] = newBoard[swap] + highlightSuffix;
+                const swapFor = board.operationSequence[i].consumedBogoToken.second;
+                newBoard[swapFor] = highlightPrefix + newBoard[swapFor];
+                newBoard[swapFor] = newBoard[swapFor] + highlightSuffix;
+                board.operationSequence[i].newBoard = newBoard;
             }
         }
         const userList = await UserModel.getList('system', uidList);

@@ -50,11 +50,24 @@
             <td style="text-align: right; width: 15rem;">{{ user.render_inline(userList[record.uid]) }}</td>
             <td style="text-align: right;">{{ _('Index') }} {{ record.consumedBogoToken.first }}</td>
             <td style="text-align: right;">{{ _('Index') }} {{ record.consumedBogoToken.second }}</td>
-            <td style="text-align: right; width: 15rem;">{{ record.newBoard|json|replace(',',', ') }}</td>
+            <td style="text-align: right; width: 15rem;">{{ record.newBoard|json|replace(',',', ')|replace('"','')|replace('\'','"')|safe }}</td>
             <td style="text-align: right;">{{ _('To ' + record.operation) }}</td>
             <td style="text-align: right;">{{ _(record.operationStatus) }}</td>
-            <td style="text-align: right;">{% if record.profit > 0 %}+{% endif %}{{ record.profit }}{% if record.jackpot > 0 %} <span class="text-orange">(+{{ record.jackpot }})</span>{% endif %}</td>
+            <td style="text-align: right;">{% if record.profit %}<span class="text-orange">{% endif %}{% if record.profit > 0 %}+{% endif %}{{ record.profit }}{% if record.profit %}</span>{% endif %}</td>
           </tr>
+          {% if record.jackpot %}
+          <tr>
+            <td style="text-align: right;" class="text-orange">{{ _('Jackpot') }}</td>
+            <td style="text-align: right; width: 10rem;">{{ datetimeSpan(record.processedAt)|safe }}</td>
+            <td style="text-align: right; width: 15rem;">{{ user.render_inline(userList[record.uid]) }}</td>
+            <td style="text-align: right;">&nbsp;</td>
+            <td style="text-align: right;">&nbsp;</td>
+            <td style="text-align: right; width: 15rem;">&nbsp;</td>
+            <td style="text-align: right;">&nbsp;</td>
+            <td style="text-align: right;">&nbsp;</td>
+            <td style="text-align: right;" class="text-orange">+{{ record.jackpot }}</td>
+          </tr>
+          {% endif %}
           {%- endfor -%}
         </tbody>
       </table>
