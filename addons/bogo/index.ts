@@ -118,7 +118,7 @@ export class BogoBoardHandler extends Handler {
         });
     }
     async get() {
-        await this.limitRate('bogo', 15, 3, udoc.uname);
+        await this.limitRate('bogo', 15, 3, this.user._id);
         const boardId = await SystemModel.get("bogo.currentBoardId");
         const board = await DocumentModel.get('system', 29032903, boardId, null);
         const thisUser = await UserModel.getById('system', this.user._id);
