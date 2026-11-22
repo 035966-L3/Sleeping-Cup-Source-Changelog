@@ -18,7 +18,7 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
     async prepare(domainId: string, numberid: number) {
         this.rdoc = await Temp.gets(numberid);
         if (!this.rdoc) throw new RecordNotFoundError(numberid.toString());
-        if (!(await global.Hydro.model.contest.isOwnOrTeammateRecord(domainId, this.rdoc, this.user._id))) this.checkPerm(PERM.PERM_VIEW_RECORD);    }
+        if (!(await global.Hydro.model.contest.isOwnOrTeammateRecord(domainId, this.rdoc, this.user._id))) this.checkPerm(PERM.PERM_VIEW_RECORD);
     }
 
     async download() {

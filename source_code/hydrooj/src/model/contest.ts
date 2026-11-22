@@ -1066,6 +1066,11 @@ export function getMultiStatus(domainId: string, query: any) {
     return document.getMultiStatus(domainId, document.TYPE_CONTEST, query);
 }
 
+export async function getTeamVid(domainId: string, tid: ObjectId, uid: number): Promise<number | null> {
+    const s = await getMultiStatus(domainId, { docId: tid, members: uid }).project({ uid: 1 }).limit(1).next();
+    return s?.uid ?? null;
+}
+
 export function setStatus(domainId: string, tid: ObjectId, uid: number, $set?: any, $unset?: any) {
     return document.setStatus(domainId, document.TYPE_CONTEST, tid, uid, $set, $unset);
 }
