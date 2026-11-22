@@ -167,12 +167,22 @@
               row: false
             }) }}
             {{ form.form_checkbox({
+              columns:4,
+              label:'Allow Print',
+              name:'allowPrint',
+              placeholder:_('Allow user to print during contest'),
+              value:tdoc.allowPrint|default(false),
+              row:false
+            }) }}
+            {{ form.form_checkbox({
               columns: 4,
-              label: 'Allow Print',
-              name: 'allowPrint',
-              placeholder: _('Allow user to print during contest'),
-              value: tdoc.allowPrint|default(false),
-              row: false
+              label: 'Allow Team',
+              name: 'allowTeam',
+              placeholder: _('Allow team participation'),
+              help_text: _('Once enabled, team participation cannot be disabled for this contest.'),
+              value: tdoc.allowTeam|default(false),
+              row: false,
+              disabled: tdoc.allowTeam|default(false)
             }) }}
             <div style="display: none" class="contest-rule-settings contest-rule--oi contest-rule--strictioi">
             {{ form.form_checkbox({
@@ -199,7 +209,6 @@
             </div>
             <div style="display: none" class="contest-rule-settings contest-rule--oi contest-rule--ioi contest-rule--ledo contest-rule--strictioi contest-rule--sleepingcupcoder">
             <!-- Allow flexible duration for "Sleeping Cup" ruleset -->
-            <!-- Typo fix: Flaxable -> Flexible -->
             {{ form.form_text({
               columns: 4,
               label: 'Flexible Duration',
@@ -246,7 +255,7 @@
       <div class="section__header">
         <h1 class="section__title">{{ _('Files') }}</h1>
         <div class="section__tools">
-          <button class="primary rounded button" name="upload_file">{{ _('Upload') }}</button>
+          <button class="primary rounded button" name="upload_file" data-type="public" data-sidebar="true">{{ _('Upload') }}</button>
         </div>
       </div>
       {% set sidebar = true %}

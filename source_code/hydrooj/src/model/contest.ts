@@ -85,6 +85,23 @@ export function isExtended(tdoc: Tdoc) {
     return tdoc.penaltySince.getTime() <= now && now < tdoc.endAt.getTime();
 }
 
+async function getScoreboardUdict(
+    tdoc: Tdoc, rankedTsdocs: [number, ContestStatusDoc][], uids: number[], showDisplayName: boolean,
+) {
+    const memberUids = tdoc.allowTeam
+        ? rankedTsdocs.flatMap(([, tsdoc]) => tsdoc.members || [])
+        : [];
+    const udict = await UserModel.getListForRender(tdoc.domainId, [...uids, ...memberUids], showDisplayName ? ['displayName', 'level'] : ['level']);
+    if (tdoc.allowTeam) {
+        for (const [, tsdoc] of rankedTsdocs) {
+            if (tsdoc.members?.length && udict[tsdoc.uid]) {
+                (udict[tsdoc.uid] as any).teamMembers = tsdoc.members.filter((uid) => udict[uid]);
+            }
+        }
+    }
+    return udict;
+}
+
 export function buildContestRule<T>(def: Optional<ContestRule<T>, 'applyProjection'>): ContestRule<T>;
 export function buildContestRule<T>(def: Partial<ContestRule<T>>, baseRule: ContestRule<T>): ContestRule<T>;
 export function buildContestRule<T>(def: Partial<ContestRule<T>>, baseRule: ContestRule<T> = {} as any) {
@@ -240,7 +257,7 @@ const acm = buildContestRule({
     async scoreboard(config, _, tdoc, pdict, cursor) {
         const rankedTsdocs = await db.ranked(cursor, (a, b) => (a.score || 0) === (b.score || 0) && (a.time || 0) === (b.time || 0));
         const uids = rankedTsdocs.map(([, tsdoc]) => tsdoc.uid);
-        const udict = await UserModel.getListForRender(tdoc.domainId, uids, config.showDisplayName ? ['displayName'] : []);
+        const udict = await getScoreboardUdict(tdoc, rankedTsdocs, uids, config.showDisplayName);
         // Find first accept
         const first = {};
         const data = await document.collStatus.aggregate([
@@ -415,7 +432,7 @@ const oi = buildContestRule({
     async scoreboard(config, _, tdoc, pdict, cursor) {
         const rankedTsdocs = await db.ranked(cursor, (a, b) => (a.score || 0) === (b.score || 0));
         const uids = rankedTsdocs.map(([, tsdoc]) => tsdoc.uid);
-        const udict = await UserModel.getListForRender(tdoc.domainId, uids, config.showDisplayName ? ['displayName'] : []);
+        const udict = await getScoreboardUdict(tdoc, rankedTsdocs, uids, config.showDisplayName);
         const psdict = {};
         const first = {};
         const useRelativeTime = !!tdoc.duration;
@@ -875,7 +892,7 @@ const homework = buildContestRule({
     async scoreboard(config, _, tdoc, pdict, cursor) {
         const rankedTsdocs = await db.ranked(cursor, (a, b) => a.score === b.score);
         const uids = rankedTsdocs.map(([, tsdoc]) => tsdoc.uid);
-        const udict = await UserModel.getListForRender(tdoc.domainId, uids, config.showDisplayName ? ['displayName'] : []);
+        const udict = await getScoreboardUdict(tdoc, rankedTsdocs, uids, config.showDisplayName);
         const columns = await this.scoreboardHeader(config, _, tdoc, pdict);
         const rows: ScoreboardRow[] = [
             columns,
@@ -1014,8 +1031,18 @@ export async function updateStatus(
 
 export async function getListStatus(domainId: string, uid: number, tids: ObjectId[]) {
     const r = {};
-    // eslint-disable-next-line no-await-in-loop
-    for (const tid of tids) r[tid.toHexString()] = await getStatus(domainId, tid, uid);
+    for (const tid of tids) {
+        // eslint-disable-next-line no-await-in-loop
+        const tsdoc = await getStatus(domainId, tid, uid);
+        if (tsdoc?.attend) {
+            r[tid.toHexString()] = tsdoc;
+            continue;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const teamVid = await getTeamVid(domainId, tid, uid);
+        // eslint-disable-next-line no-await-in-loop
+        r[tid.toHexString()] = teamVid ? await getStatus(domainId, tid, teamVid) : tsdoc;
+    }
     return r;
 }
 
@@ -1093,6 +1120,19 @@ export async function unlockScoreboard(domainId: string, tid: ObjectId) {
     await recalcStatus(domainId, tid);
 }
 
+export async function isSameTeam(domainId: string, tid: ObjectId, a: number, b: number): Promise<boolean> {
+    if (a === b) return true;
+    const [va, vb] = await Promise.all([getTeamVid(domainId, tid, a), getTeamVid(domainId, tid, b)]);
+    return !!va && va === vb;
+}
+
+export async function isOwnOrTeammateRecord(domainId: string, rdoc: RecordDoc, uid: number): Promise<boolean> {
+    if (rdoc.uid === uid) return true;
+    if (!rdoc.contest) return false;
+    if (RecordModel.RECORD_PRETEST.equals(rdoc.contest) || RecordModel.RECORD_GENERATE.equals(rdoc.contest)) return false;
+    return isSameTeam(domainId, rdoc.contest, rdoc.uid, uid);
+}
+
 export function canViewHiddenScoreboard(this: { user: User }, tdoc: Tdoc) {
     if (this.user.own(tdoc)) return true;
     if (tdoc.rule === 'homework') return this.user.hasPerm(PERM.PERM_VIEW_HOMEWORK_HIDDEN_SCOREBOARD);
@@ -1100,6 +1140,7 @@ export function canViewHiddenScoreboard(this: { user: User }, tdoc: Tdoc) {
 }
 
 export async function canShowRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    if (RULES[tdoc.rule].showRecord(tdoc, { beginAt: tdoc.beginAt, endAt: tdoc.endAt }, new Date())) return true;
     const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
@@ -1107,6 +1148,7 @@ export async function canShowRecord(this: { user: User }, tdoc: Tdoc, allowPermO
 }
 
 export async function canShowSelfRecord(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    if (RULES[tdoc.rule].showSelfRecord(tdoc, { beginAt: tdoc.beginAt, endAt: tdoc.endAt }, new Date())) return true;
     const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showSelfRecord(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
@@ -1114,6 +1156,7 @@ export async function canShowSelfRecord(this: { user: User }, tdoc: Tdoc, allowP
 }
 
 export async function canShowScoreboard(this: { user: User }, tdoc: Tdoc, allowPermOverride = true) {
+    if (RULES[tdoc.rule].showScoreboard(tdoc, { beginAt: tdoc.beginAt, endAt: tdoc.endAt }, new Date())) return true;
     const tsdoc = await getStatus(tdoc.domainId, tdoc._id, this.user._id) || { beginAt: tdoc.beginAt, endAt: tdoc.endAt };
     if (RULES[tdoc.rule].showScoreboard(tdoc, tsdoc, new Date())) return true;
     if (allowPermOverride && canViewHiddenScoreboard.call(this, tdoc)) return true;
@@ -1124,7 +1167,9 @@ export async function getScoreboard(
     this: Handler, domainId: string, tid: ObjectId, config: ScoreboardConfig,
 ): Promise<[Tdoc, ScoreboardRow[], BaseUserDict, ProblemDict]> {
     const tdoc = await get(domainId, tid);
-    if (!await canShowScoreboard.call(this, tdoc)) throw new ContestScoreboardHiddenError(tid);
+    if ((new Date()) < tdoc.endAt) {
+        if (!await canShowScoreboard.call(this, tdoc)) throw new ContestScoreboardHiddenError(tid);
+    }
     const tsdocsCursor = getMultiStatus(domainId, { docId: tid }).sort(RULES[tdoc.rule].statusSort);
     const pdict = await problem.getList(domainId, tdoc.pids, true, true, problem.PROJECTION_CONTEST_DETAIL);
     const [rows, udict] = await RULES[tdoc.rule].scoreboard(
@@ -1159,10 +1204,13 @@ export function getClarification(domainId: string, did: ObjectId) {
     return document.get(domainId, document.TYPE_CONTEST_CLARIFICATION, did);
 }
 
-export function getMultiClarification(domainId: string, tid: ObjectId, owner?: number) {
+export function getMultiClarification(domainId: string, tid: ObjectId, owner?: number | number[]) {
+    const ownerFilter = owner === undefined
+        ? {}
+        : { owner: { $in: [0, ...(Array.isArray(owner) ? owner : [owner])] } };
     return document.getMulti(
         domainId, document.TYPE_CONTEST_CLARIFICATION,
-        { parentType: document.TYPE_CONTEST, parentId: tid, ...(typeof owner === 'number' ? { owner: { $in: [owner, 0] } } : {}) },
+        { parentType: document.TYPE_CONTEST, parentId: tid, ...ownerFilter },
     ).sort('_id', -1).toArray();
 }
 
@@ -1217,7 +1265,7 @@ export async function apply(ctx: Context) {
         if (!bdoc.first) return;
         (async () => {
             const tsdocs = await getMultiStatus(domainId, { docId: tid, subscribe: 1 }).toArray();
-            const uids = Array.from<number>(new Set(tsdocs.map((tsdoc) => tsdoc.uid)));
+            const uids = Array.from<number>(new Set(tsdocs.flatMap((tsdoc) => (tsdoc.members?.length ? tsdoc.members : [tsdoc.uid]))));
             const [team, tdoc, pdoc] = await Promise.all([
                 UserModel.getById(domainId, bdoc.uid),
                 get(domainId, tid),
@@ -1245,6 +1293,9 @@ global.Hydro.model.contest = {
     add,
     getListStatus,
     getMultiStatus,
+    getTeamVid,
+    isSameTeam,
+    isOwnOrTeammateRecord,
     attend,
     cancelAttend,
     edit,

@@ -18,7 +18,7 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
     async prepare(domainId: string, numberid: number) {
         this.rdoc = await Temp.gets(numberid);
         if (!this.rdoc) throw new RecordNotFoundError(numberid.toString());
-        if (this.rdoc.uid !== this.user._id) this.checkPerm(PERM.PERM_VIEW_RECORD);
+        if (!(await global.Hydro.model.contest.isOwnOrTeammateRecord(domainId, this.rdoc, this.user._id))) this.checkPerm(PERM.PERM_VIEW_RECORD);    }
     }
 
     async download() {
@@ -47,6 +47,7 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
         if (rev && allRevs[rev.toString()]) {
             rdoc = { ...rdoc, ...omit(await db.collection('record.history').findOne({ _id: rev }), ['_id']), progress: null };
         }
+        const isOwnOrTeammate = await global.Hydro.model.contest.isOwnOrTeammateRecord(domainId, rdoc, this.user._id);
         let canViewDetail = true;
         if (rdoc.contest?.toString().startsWith('0'.repeat(23))) {
             if (rdoc.uid !== this.user._id) throw new PermissionError(PERM.PERM_READ_RECORD_CODE);
@@ -55,7 +56,7 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
             let canView = this.user.own(this.tdoc);
             canView ||= global.Hydro.model.contest.canShowRecord.call(this, this.tdoc);
             canView ||= global.Hydro.model.contest.canShowSelfRecord.call(this, this.tdoc, true) && rdoc.uid === this.user._id;
-            if (!canView && rdoc.uid !== this.user._id) throw new PermissionError(rid);
+            if (!canView && !isOwnOrTeammate) throw new PermissionError(rid);
             canViewDetail = canView;
             this.args.tid = this.tdoc.docId;
             if (!this.user.own(this.tdoc) && !this.user.hasPerm(PERM.PERM_EDIT_CONTEST)) {
@@ -70,12 +71,13 @@ export class NumberRecordDetailHandler extends ContestDetailBaseHandler { // add
             global.Hydro.model.user.getById(domainId, rdoc.uid),
         ]);
 
-        let canViewCode = rdoc.uid === this.user._id;
+        let canViewCode = isOwnOrTeammate;
         canViewCode ||= this.user.hasPriv(PRIV.PRIV_READ_RECORD_CODE);
         canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE);
         canViewCode ||= this.user.hasPerm(PERM.PERM_READ_RECORD_CODE_ACCEPT) && self?.status === STATUS.STATUS_ACCEPTED;
         if (this.tdoc) {
-            this.tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, this.user._id);
+            const teamVid = this.tdoc.allowTeam ? await global.Hydro.model.contest.getTeamVid(domainId, this.tdoc.docId, this.user._id) : null;
+            this.tsdoc = await global.Hydro.model.contest.getStatus(domainId, this.tdoc.docId, teamVid ?? this.user._id);
             canViewCode ||= this.user.own(this.tdoc);
             if (this.tdoc.allowViewCode && global.Hydro.model.contest.isDone(this.tdoc)) {
                 canViewCode ||= !!this.tsdoc?.attend;
